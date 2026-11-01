@@ -54,7 +54,10 @@ def _stamp(dst: Path) -> str:
 # What gets refreshed
 # ---------------------------------------------------------------------------
 
-def test_every_stale_platform_is_refreshed_not_only_the_detected_one(capsys):
+@pytest.mark.parametrize("system", ["Linux", "Windows"])
+def test_every_stale_platform_is_refreshed_not_only_the_detected_one(capsys, monkeypatch, system):
+    """Refresh each owned destination, including Gemini's separate Windows copy."""
+    monkeypatch.setattr(mainmod.platform, "system", lambda: system)
     dsts = {name: _stale(name) for name in ("claude", "codex", "opencode", "gemini")}
 
     mainmod._refresh_stale_skills()
@@ -62,7 +65,8 @@ def test_every_stale_platform_is_refreshed_not_only_the_detected_one(capsys):
     out, err = capsys.readouterr()
     for name, dst in dsts.items():
         assert _stamp(dst) == __version__, name
-        assert dst.read_bytes() == _packaged(name), name
+        variant = "windows" if name == "claude" and system == "Windows" else name
+        assert dst.read_bytes() == _packaged(variant), name
         assert str(dst.parent) in err
     assert OLD in err and "GRAPHIFY_NO_AUTO_REFRESH" in err
     assert out == "", "stdout must stay clean for --json and the MCP stdio server"
@@ -156,15 +160,14 @@ def test_the_copilot_dir_shared_with_vscode_is_not_guessed():
     assert dst.read_text(encoding="utf-8") == OLD_BODY
 
 
-def test_a_directory_shared_by_two_platforms_is_not_guessed(monkeypatch):
-    """On Windows gemini and agents both install into ~/.agents/skills (#2800)."""
-    monkeypatch.setattr(mainmod.platform, "system", lambda: "Windows")
-    assert _platform_skill_destination("gemini") == _platform_skill_destination("agents")
-    dst = _stale("agents")
-
-    mainmod._refresh_stale_skills()
-
-    assert _stamp(dst) == OLD
+@pytest.mark.parametrize("system", ["Linux", "Darwin", "Windows"])
+def test_gemini_and_agents_own_separate_skill_dirs(monkeypatch, system):
+    """gemini and agents ship different SKILL.md files, so one shared dir let
+    each overwrite and uninstall the other's skill on Windows (#2800)."""
+    monkeypatch.setattr(mainmod.platform, "system", lambda: system)
+    gemini = _platform_skill_destination("gemini")
+    assert gemini == Path.home() / ".gemini" / "skills" / "graphify" / "SKILL.md"
+    assert gemini.parent != _platform_skill_destination("agents").parent
 
 
 def test_a_directory_shared_through_a_symlink_is_not_guessed(requires_symlinks):
@@ -451,9 +454,11 @@ def test_uninstall_after_a_refresh_leaves_no_directory_behind():
     assert not dst.parent.exists()
 
 
-def test_a_stale_gemini_skill_gets_the_warning_too(monkeypatch, capsys):
+@pytest.mark.parametrize("system", ["Linux", "Windows"])
+def test_a_stale_gemini_skill_gets_the_warning_too(monkeypatch, capsys, system):
     """gemini is not in _PLATFORM_CONFIG, so the version check never saw its
-    ~/.gemini copy; with the refresh off it must still warn."""
+    user copy; with the refresh off it must still warn at its host destination."""
+    monkeypatch.setattr(mainmod.platform, "system", lambda: system)
     monkeypatch.setenv("GRAPHIFY_NO_AUTO_REFRESH", "1")
     dst = _stale("gemini")
     monkeypatch.setattr(sys, "argv", ["graphify", "--version"])
@@ -462,19 +467,50 @@ def test_a_stale_gemini_skill_gets_the_warning_too(monkeypatch, capsys):
 
     err = capsys.readouterr().err
     assert f"warning: skill at {dst.parent} is from graphify {OLD}" in err
+    # Gemini owns .gemini on every OS; the diagnostic must name its installer.
     assert "graphify install --platform gemini" in err
 
 
 def test_the_first_cli_run_after_an_upgrade_refreshes_and_stays_quiet(monkeypatch, capsys):
     dsts = [_stale(name) for name in ("claude", "codex")]
-    monkeypatch.setattr(sys, "argv", ["graphify", "--version"])
+    monkeypatch.setattr(sys, "argv", ["graphify", "extract", "."])
+    monkeypatch.setattr(mainmod, "dispatch_install_cli", lambda _cmd: False)
+    monkeypatch.setattr(mainmod, "dispatch_command", lambda _cmd: None)
 
     mainmod._run_cli()
 
-    out, err = capsys.readouterr()
-    assert out.strip() == f"graphify {__version__}"
     assert all(_stamp(dst) == __version__ for dst in dsts)
-    assert "warning: skill at" not in err, "a refreshed copy must not also warn"
+    assert "warning: skill at" not in capsys.readouterr().err, "a refreshed copy must not also warn"
+
+
+@pytest.mark.parametrize("argv", [
+    [], ["--version"], ["-v"], ["version"], ["--help"], ["-h"], ["-?"], ["update", "--help"],
+])
+def test_version_and_help_leave_a_stale_skill_alone(monkeypatch, capsys, argv):
+    """Checking what is installed must not rewrite it (#4545); the stale copy is
+    still reported, since the warning only reads."""
+    dst = _stale("codex")
+    monkeypatch.setattr(sys, "argv", ["graphify", *argv])
+    monkeypatch.setattr(mainmod, "dispatch_command", lambda _cmd: pytest.fail("help must not dispatch"))
+
+    mainmod._run_cli()
+
+    assert _stamp(dst) == OLD
+    assert dst.read_text(encoding="utf-8") == OLD_BODY
+    assert not dst.with_name("SKILL.md.bak").exists()
+    assert f"warning: skill at {dst.parent} is from graphify {OLD}" in capsys.readouterr().err
+
+
+def test_help_text_given_to_a_free_text_command_still_refreshes(monkeypatch):
+    """`graphify query "what does --help do"` is a real query, not a help request."""
+    dst = _stale("codex")
+    monkeypatch.setattr(sys, "argv", ["graphify", "query", "what does", "--help", "do"])
+    monkeypatch.setattr(mainmod, "dispatch_install_cli", lambda _cmd: False)
+    monkeypatch.setattr(mainmod, "dispatch_command", lambda _cmd: None)
+
+    mainmod._run_cli()
+
+    assert _stamp(dst) == __version__
 
 
 def test_what_the_refresh_skips_still_gets_the_warning(monkeypatch, capsys):
@@ -525,3 +561,13 @@ def test_install_and_hook_commands_skip_the_refresh(monkeypatch, cmd):
     except (_Stop, SystemExit):
         pass
     assert calls == []
+
+
+import pytest as _pytest_posix
+
+
+@_pytest_posix.fixture(autouse=True)
+def _posix_skill_layout(monkeypatch):
+    """gemini and hermes install to different directories on Windows; these tests
+    assert the POSIX layout, so pin it."""
+    monkeypatch.setattr("platform.system", lambda: "Linux")

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from graphify.exporters.base import COMMUNITY_COLORS  # noqa: E402,F401
+from graphify.exporters.html_navigation import MIDDLE_PAN_SCRIPT
 from pathlib import Path
 import html as _html
 from graphify.analyze import _node_community_map
@@ -9,6 +10,8 @@ from graphify.paths import write_text_atomic
 import json
 import networkx as nx
 from graphify.security import sanitize_label
+from graphify.qt_html import edge_fields, edge_title, semantic_fields, semantic_title
+from graphify.qt_export import has_qt_qml
 
 
 MAX_NODES_FOR_VIZ = 5_000
@@ -31,42 +34,58 @@ def _viz_node_limit() -> int:
 
 def _html_styles() -> str:
     return """<style>
+  :root {
+    --bg: #0f0f1a; --panel: #1a1a2e; --border: #2a2a4e; --input-border: #3a3a5e;
+    --text: #e0e0e0; --text-2: #aaa; --text-3: #ccc; --muted: #555; --count: #666;
+    --neighbor-border: #333; --node-label: #ffffff;
+  }
+  [data-theme="light"] {
+    --bg: #ffffff; --panel: #f8f9fa; --border: #d9dee5; --input-border: #c3cad4;
+    --text: #222222; --text-2: #666666; --text-3: #333333; --muted: #888888; --count: #777777;
+    --neighbor-border: #ccc; --node-label: #222222;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0f0f1a; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
   #graph { flex: 1; }
-  #sidebar { width: 280px; background: #1a1a2e; border-left: 1px solid #2a2a4e; display: flex; flex-direction: column; overflow: hidden; }
-  #search-wrap { padding: 12px; border-bottom: 1px solid #2a2a4e; }
-  #search { width: 100%; background: #0f0f1a; border: 1px solid #3a3a5e; color: #e0e0e0; padding: 7px 10px; border-radius: 6px; font-size: 13px; outline: none; }
+  #sidebar { width: 280px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  #search-wrap { padding: 12px; border-bottom: 1px solid var(--border); }
+  #search { width: 100%; background: var(--bg); border: 1px solid var(--input-border); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; outline: none; }
   #search:focus { border-color: #4E79A7; }
-  #search-results { max-height: 140px; overflow-y: auto; padding: 4px 12px; border-bottom: 1px solid #2a2a4e; display: none; }
+  #search-results { max-height: 140px; overflow-y: auto; padding: 4px 12px; border-bottom: 1px solid var(--border); display: none; }
   .search-item { padding: 4px 6px; cursor: pointer; border-radius: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .search-item:hover { background: #2a2a4e; }
-  #info-panel { padding: 14px; border-bottom: 1px solid #2a2a4e; min-height: 140px; }
-  #info-panel h3 { font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-  #info-content { font-size: 13px; color: #ccc; line-height: 1.6; }
+  .search-item:hover { background: var(--border); }
+  #info-panel { padding: 14px; border-bottom: 1px solid var(--border); min-height: 140px; }
+  #info-panel h3 { font-size: 13px; color: var(--text-2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  #info-content { font-size: 13px; color: var(--text-3); line-height: 1.6; }
   #info-content .field { margin-bottom: 5px; }
-  #info-content .field b { color: #e0e0e0; }
-  #info-content .empty { color: #555; font-style: italic; }
-  .neighbor-link { display: block; padding: 2px 6px; margin: 2px 0; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid #333; }
-  .neighbor-link:hover { background: #2a2a4e; }
+  #info-content .field b { color: var(--text); }
+  #info-content .empty { color: var(--muted); font-style: italic; }
+  .neighbor-link { display: block; padding: 2px 6px; margin: 2px 0; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid var(--neighbor-border); }
+  .neighbor-link:hover { background: var(--border); }
   #neighbors-list { max-height: 160px; overflow-y: auto; margin-top: 4px; }
   #legend-wrap { flex: 1; overflow-y: auto; padding: 12px; }
-  #legend-wrap h3 { font-size: 13px; color: #aaa; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  #legend-wrap h3 { font-size: 13px; color: var(--text-2); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
   .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-radius: 4px; font-size: 12px; }
-  .legend-item:hover { background: #2a2a4e; padding-left: 4px; }
+  .legend-item:hover { background: var(--border); padding-left: 4px; }
   .legend-item.dimmed { opacity: 0.35; }
   .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
   .legend-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .legend-count { color: #666; font-size: 11px; }
-  #stats { padding: 10px 14px; border-top: 1px solid #2a2a4e; font-size: 11px; color: #555; }
+  .legend-count { color: var(--count); font-size: 11px; }
+  #stats { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
   #legend-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 4px 0; }
-  #legend-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: #aaa; user-select: none; }
-  #legend-controls label:hover { color: #e0e0e0; }
-  .legend-cb, #select-all-cb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border: 1.5px solid #3a3a5e; border-radius: 3px; background: #0f0f1a; cursor: pointer; position: relative; flex-shrink: 0; }
+  #legend-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--text-2); user-select: none; }
+  #legend-controls label:hover { color: var(--text); }
+  .legend-cb, #select-all-cb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border: 1.5px solid var(--input-border); border-radius: 3px; background: var(--bg); cursor: pointer; position: relative; flex-shrink: 0; }
+  #view-caption { font-size: 11px; color: var(--text-2); line-height: 1.5; margin-bottom: 10px; }
+  #navigation-help { font-size: 11px; color: var(--text-2); line-height: 1.5; margin-bottom: 10px; }
   .legend-cb:checked, #select-all-cb:checked { background: #4E79A7; border-color: #4E79A7; }
   .legend-cb:checked::after, #select-all-cb:checked::after { content: ''; position: absolute; left: 3.5px; top: 1px; width: 4px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
   #select-all-cb:indeterminate { background: #4E79A7; border-color: #4E79A7; }
   #select-all-cb:indeterminate::after { content: ''; position: absolute; left: 2px; top: 5px; width: 8px; height: 2px; background: #fff; border: none; transform: none; }
+  #theme-wrap { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  #theme-wrap button { flex: 1; background: var(--bg); color: var(--text-2); border: 1px solid var(--input-border); border-radius: 4px; padding: 3px 0; font-size: 11px; cursor: pointer; }
+  #theme-wrap button:hover { color: var(--text); }
+  #theme-wrap button[aria-pressed="true"] { background: #4E79A7; border-color: #4E79A7; color: #fff; }
 </style>"""
 
 def _hyperedge_script(hyperedges_json: str) -> str:
@@ -147,8 +166,14 @@ function esc(s) {{
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }}
 
-// Build vis datasets
-const nodesDS = new vis.DataSet(RAW_NODES.map((n, i) => ({{
+// Start with all exported communities; large graphs are already aggregated.
+const knownCommunities = new Set(LEGEND.map(c => c.cid));
+let selectedCommunities = new Set(knownCommunities);
+let showUngrouped = true;
+const legendControls = new Map();
+
+const VIEW_NODES = RAW_NODES.map((n, i) => ({{
+  ...n,
   id: n.id, label: n.label, color: n.color, size: n.size,
   font: n.font, title: n.title,
   // Fermat/golden-angle spiral seed positions (#3699): spreading nodes out
@@ -160,9 +185,12 @@ const nodesDS = new vis.DataSet(RAW_NODES.map((n, i) => ({{
   community: n.community, community_name: n.community_name,
   source_file: n.source_file, file_type: n.file_type, degree: n.degree,
   member_count: n.member_count,
-}})));
+  qt_qml: n.qt_qml,
+  source_location: n.source_location,
+}}));
 
-const edgesDS = new vis.DataSet(RAW_EDGES.map((e, i) => ({{
+const VIEW_EDGES = RAW_EDGES.map((e, i) => ({{
+  ...e,
   id: i, from: e.from, to: e.to,
   label: '',
   title: e.title,
@@ -170,7 +198,21 @@ const edgesDS = new vis.DataSet(RAW_EDGES.map((e, i) => ({{
   width: e.width,
   color: e.color,
   arrows: {{ to: {{ enabled: true, scaleFactor: 0.5 }} }},
-}})));
+}}));
+
+function visibleRecords() {{
+  const nodes = VIEW_NODES.filter(n => LEGEND.length
+    ? selectedCommunities.has(n.community) || (showUngrouped && !knownCommunities.has(n.community))
+    : showUngrouped);
+  const ids = new Set(nodes.map(n => n.id));
+  return {{ nodes, edges: VIEW_EDGES.filter(e => ids.has(e.from) && ids.has(e.to)) }};
+}}
+
+const initialRecords = visibleRecords();
+const nodesDS = new vis.DataSet(initialRecords.nodes);
+const edgesDS = new vis.DataSet(initialRecords.edges);
+let loadedNodeIds = new Set(initialRecords.nodes.map(n => n.id));
+let loadedEdgeIds = new Set(initialRecords.edges.map(e => e.id));
 
 const container = document.getElementById('graph');
 const network = new vis.Network(container, {{ nodes: nodesDS, edges: edgesDS }}, {{
@@ -198,9 +240,48 @@ const network = new vis.Network(container, {{ nodes: nodesDS, edges: edgesDS }},
   edges: {{ smooth: {{ type: 'continuous', roundness: 0.2 }}, selectionWidth: 3 }},
 }});
 
+// Theme toggle (#3894): Light / Dark / System, persisted in localStorage.
+const THEME_KEY = 'graphify-theme';
+const themeMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+let themeLabelColor = '#ffffff';  // matches the per-node font color set in Python
+function themePref() {{
+  let p = null;
+  try {{ p = localStorage.getItem(THEME_KEY); }} catch (e) {{}}
+  return (p === 'light' || p === 'dark' || p === 'system') ? p : null;
+}}
+function applyTheme(pref) {{
+  const t = pref === 'light' ? 'light' : (pref === 'system' && themeMQ && themeMQ.matches) ? 'light' : 'dark';
+  const root = document.documentElement;
+  if (!root) return;
+  root.setAttribute('data-theme', t);
+  document.querySelectorAll('[data-theme-choice]').forEach(b => {{
+    b.setAttribute('aria-pressed', String(b.dataset.themeChoice === (pref || 'dark')));
+  }});
+  const labelColor = getComputedStyle(root).getPropertyValue('--node-label').trim();
+  if (labelColor && labelColor !== themeLabelColor) {{
+    themeLabelColor = labelColor;
+    nodesDS.update(nodesDS.get().map(n => ({{ id: n.id, font: Object.assign({{}}, n.font, {{ color: labelColor }}) }})));
+  }}
+}}
+document.querySelectorAll('[data-theme-choice]').forEach(b => {{
+  b.addEventListener('click', () => {{
+    const pref = b.dataset.themeChoice;
+    try {{ localStorage.setItem(THEME_KEY, pref); }} catch (e) {{}}
+    applyTheme(pref);
+  }});
+}});
+if (themeMQ) {{
+  const onSchemeChange = () => {{ if (themePref() === 'system') applyTheme('system'); }};
+  if (themeMQ.addEventListener) themeMQ.addEventListener('change', onSchemeChange);
+  else if (themeMQ.addListener) themeMQ.addListener(onSchemeChange);
+}}
+applyTheme(themePref());
+
 network.once('stabilizationIterationsDone', () => {{
   network.setOptions({{ physics: {{ enabled: false }} }});
 }});
+
+{MIDDLE_PAN_SCRIPT}
 
 function showInfo(nodeId) {{
   const n = nodesDS.get(nodeId);
@@ -219,18 +300,53 @@ function showInfo(nodeId) {{
   html += `<div class="field">Community: ${{esc(n.community_name || '')}}</div>`;
   if (!isMetaNode) {{
     html += `<div class="field">Source: ${{esc(n.source_file || '-')}}</div>`;
+    if (n.qt_qml && typeof n.qt_qml === 'object' && !Array.isArray(n.qt_qml)) {{
+      // Only the bounded public projection is displayed; opaque transport and
+      // provider data remain in RAW_NODES for faithful source-fact retention.
+      html += `<div class="field">Location: ${{esc(n.source_location || '-')}}</div>`;
+      Object.entries(n.qt_qml).forEach(([contract, fields]) => {{
+        if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return;
+        Object.entries(fields).forEach(([key, value]) => {{
+          html += `<div class="field">${{esc(contract.toUpperCase())}} ${{esc(key.replace(/_/g, ' '))}}: ${{esc(Array.isArray(value) ? value.join(', ') : value)}}</div>`;
+        }});
+      }});
+    }}
   }} else if (n.member_count !== undefined && n.member_count !== null) {{
     html += `<div class="field">Members: ${{esc(n.member_count)}}</div>`;
+    // Aggregate neighbors omit internal source relationships. Missing source
+    // counts in a caller-supplied meta-graph remain unknown, never zero.
+    const internalKnown = Number.isInteger(n.internal_source_edges);
+    const externalKnown = Number.isInteger(n.external_source_edges);
+    html += `<div class="field">Internal source edges: ${{esc(internalKnown ? n.internal_source_edges : 'unavailable')}}</div>`;
+    html += `<div class="field">External source edges: ${{esc(externalKnown ? n.external_source_edges : 'unavailable')}}</div>`;
+    html += `<div class="field">Connected communities: ${{esc(n.connected_communities)}}</div>`;
+    html += '<div class="field">Member-level source details are not expanded in this view.</div>';
+    if (internalKnown && externalKnown && n.external_source_edges === 0) {{
+      const explanation = n.internal_source_edges > 0
+        ? 'This community has internal source relationships and no links to other communities.'
+        : 'No source relationships are represented for this community.';
+      html += `<div class="field">${{esc(explanation)}}</div>`;
+    }}
   }}
-  html += `<div class="field">Degree: ${{n.degree}}</div>`;
+  if (!isMetaNode || n.member_count === undefined || n.member_count === null) {{
+    html += `<div class="field">Degree: ${{n.degree}}</div>`;
+  }}
   if (neighborIds.length) {{
-    html += `<div class="field" style="margin-top:8px;color:#aaa;font-size:11px">Neighbors (${{neighborIds.length}})</div><div id="neighbors-list">${{neighborItems}}</div>`;
+    html += `<div class="field" style="margin-top:8px;color:var(--text-2);font-size:11px">Neighbors (${{neighborIds.length}})</div><div id="neighbors-list">${{neighborItems}}</div>`;
   }}
   document.getElementById('info-content').innerHTML = html;
 }}
 
-function focusNode(nodeId) {{
-  network.focus(nodeId, {{ scale: 1.4, animation: true }});
+function focusNode(nodeId, scale = 1.4) {{
+  // A search result can belong to a deferred community. Add it before focus.
+  if (!loadedNodeIds.has(nodeId)) {{
+    const node = VIEW_NODES.find(n => n.id === nodeId);
+    if (!node) return;
+    if (knownCommunities.has(node.community)) selectedCommunities.add(node.community);
+    else showUngrouped = true;
+    refreshView();
+  }}
+  network.focus(nodeId, {{ scale, animation: true }});
   network.selectNodes([nodeId]);
   showInfo(nodeId);
 }}
@@ -247,6 +363,52 @@ document.addEventListener('click', e => {{
   const el = e.target.closest('.neighbor-link');
   if (el && el.dataset.nid !== undefined) focusNode(el.dataset.nid);
 }});
+
+// Sidebar tooltips reuse vis-network's .vis-tooltip style and 100ms tooltipDelay.
+// Names get one only when CSS ellipsis truncates them (the full text is still in
+// the DOM); counts always get one, to say what the number is. Text is set with
+// textContent only (labels are untrusted). Delegated on document so rows rebuilt
+// later (search results, showInfo()) are covered.
+const sidebarTip = document.createElement('div');
+sidebarTip.className = 'vis-tooltip';
+sidebarTip.style.cssText = 'white-space: normal; max-width: 360px; overflow-wrap: break-word;';
+document.body.appendChild(sidebarTip);
+let sidebarTipTimer = null;
+let sidebarTipEl = null;    // element whose text the tooltip shows
+let sidebarTipZone = null;  // element the pointer must leave to hide it
+function hideSidebarTip() {{
+  clearTimeout(sidebarTipTimer);
+  sidebarTip.style.visibility = 'hidden';
+  sidebarTip.textContent = '';
+  sidebarTipEl = sidebarTipZone = null;
+}}
+document.addEventListener('mouseover', e => {{
+  const zone = e.target.closest && e.target.closest('.legend-count, .legend-item, .search-item, .neighbor-link');
+  // Anywhere on a legend row except its count (dot, checkbox, gaps, padding)
+  // stands for the row's name, so moving within the row never re-triggers it.
+  const el = zone && zone.classList.contains('legend-item') ? zone.querySelector('.legend-label') : zone;
+  if (!el || el === sidebarTipEl) return;
+  hideSidebarTip();
+  const isCount = el.classList.contains('legend-count');
+  if (!isCount && el.scrollWidth <= el.clientWidth) return;
+  const text = isCount ? `${{el.textContent}} ${{el.textContent === '1' ? 'node' : 'nodes'}}` : el.textContent;
+  sidebarTipEl = el;
+  sidebarTipZone = zone;
+  const x = e.clientX, y = e.clientY;
+  sidebarTipTimer = setTimeout(() => {{
+    sidebarTip.textContent = text;
+    sidebarTip.style.left = sidebarTip.style.top = '0px';  // measure at full max-width
+    sidebarTip.style.visibility = 'visible';
+    const w = sidebarTip.offsetWidth, h = sidebarTip.offsetHeight;
+    sidebarTip.style.left = Math.max(4, Math.min(x + 12, window.innerWidth - w - 4)) + 'px';
+    sidebarTip.style.top = (y + 16 + h > window.innerHeight ? Math.max(4, y - h - 8) : y + 16) + 'px';
+  }}, 100);
+}});
+document.addEventListener('mouseout', e => {{
+  if (sidebarTipZone && !sidebarTipZone.contains(e.relatedTarget)) hideSidebarTip();
+}});
+// A click rebuilds or hides the row (showInfo(), search pick) without a mouseout.
+document.addEventListener('mousedown', hideSidebarTip);
 
 // Track hovered node — hover detection is more reliable than click params
 let hoveredNodeId = null;
@@ -278,7 +440,8 @@ searchInput.addEventListener('input', () => {{
   const q = searchInput.value.toLowerCase().trim();
   searchResults.innerHTML = '';
   if (!q) {{ searchResults.style.display = 'none'; return; }}
-  const matches = RAW_NODES.filter(n => n.label.toLowerCase().includes(q)).slice(0, 20);
+  const matches = RAW_NODES.filter(n => n.label.toLowerCase().includes(q) ||
+    JSON.stringify(n.qt_qml || '').toLowerCase().includes(q)).slice(0, 20);
   if (!matches.length) {{ searchResults.style.display = 'none'; return; }}
   searchResults.style.display = 'block';
   matches.forEach(n => {{
@@ -288,9 +451,7 @@ searchInput.addEventListener('input', () => {{
     el.style.borderLeft = `3px solid ${{n.color.background}}`;
     el.style.paddingLeft = '8px';
     el.onclick = () => {{
-      network.focus(n.id, {{ scale: 1.5, animation: true }});
-      network.selectNodes([n.id]);
-      showInfo(n.id);
+      focusNode(n.id, 1.5);
       searchResults.style.display = 'none';
       searchInput.value = '';
     }};
@@ -302,30 +463,55 @@ document.addEventListener('click', e => {{
     searchResults.style.display = 'none';
 }});
 
-const hiddenCommunities = new Set();
-
 const selectAllCb = document.getElementById('select-all-cb');
 
 function updateSelectAllState() {{
   const total = LEGEND.length;
-  const hidden = hiddenCommunities.size;
-  selectAllCb.checked = hidden === 0;
-  selectAllCb.indeterminate = hidden > 0 && hidden < total;
+  const selected = selectedCommunities.size;
+  // Named groups alone cannot prove full selection when ungrouped nodes are hidden.
+  selectAllCb.checked = loadedNodeIds.size === VIEW_NODES.length &&
+    (loadedNodeIds.size > 0 || showUngrouped);
+  selectAllCb.indeterminate = !selectAllCb.checked && loadedNodeIds.size > 0;
+  legendControls.forEach(({{ item, cb }}, cid) => {{
+    cb.checked = selectedCommunities.has(cid);
+    if (cb.checked) item.classList.remove('dimmed');
+    else item.classList.add('dimmed');
+  }});
+  const caption = document.getElementById('view-caption');
+  if (!loadedNodeIds.size) {{
+    caption.textContent = 'No communities selected. Use Select All or choose a community.';
+  }} else if (!total) {{
+    caption.textContent = `Source graph: ${{loadedNodeIds.size}} nodes; no source communities available.`;
+  }} else {{
+    caption.textContent = `Source communities: ${{selected}} of ${{total}} source communities. Filter or search to focus.`;
+  }}
+}}
+
+function refreshView() {{
+  const next = visibleRecords();
+  const nodeIds = new Set(next.nodes.map(n => n.id));
+  const edgeIds = new Set(next.edges.map(e => e.id));
+  // Remove edges first so no active relationship points at a removed node.
+  edgesDS.remove([...loadedEdgeIds].filter(id => !edgeIds.has(id)));
+  nodesDS.remove([...loadedNodeIds].filter(id => !nodeIds.has(id)));
+  nodesDS.update(next.nodes.filter(n => !loadedNodeIds.has(n.id)));
+  edgesDS.update(next.edges.filter(e => !loadedEdgeIds.has(e.id)));
+  loadedNodeIds = nodeIds;
+  loadedEdgeIds = edgeIds;
+  document.getElementById('info-content').innerHTML = '<span class="empty">Click a node to inspect it</span>';
+  hoveredNodeId = null;
+  updateSelectAllState();
+  network.setOptions({{ physics: {{ enabled: nodeIds.size > 0 }} }});
+  if (nodeIds.size) {{
+    network.once('stabilizationIterationsDone', () => network.setOptions({{ physics: {{ enabled: false }} }}));
+    network.stabilize(100);
+  }}
 }}
 
 function toggleAllCommunities(hide) {{
-  document.querySelectorAll('.legend-item').forEach(item => {{
-    hide ? item.classList.add('dimmed') : item.classList.remove('dimmed');
-  }});
-  document.querySelectorAll('.legend-cb').forEach(cb => {{
-    cb.checked = !hide;
-  }});
-  LEGEND.forEach(c => {{
-    if (hide) hiddenCommunities.add(c.cid); else hiddenCommunities.delete(c.cid);
-  }});
-  const updates = RAW_NODES.map(n => ({{ id: n.id, hidden: hide }}));
-  nodesDS.update(updates);
-  updateSelectAllState();
+  selectedCommunities = new Set(hide ? [] : LEGEND.map(c => c.cid));
+  showUngrouped = !hide;
+  refreshView();
 }}
 
 const legendEl = document.getElementById('legend');
@@ -335,26 +521,21 @@ LEGEND.forEach(c => {{
   const cb = document.createElement('input');
   cb.type = 'checkbox';
   cb.className = 'legend-cb';
-  cb.checked = true;
+  cb.checked = selectedCommunities.has(c.cid);
   cb.addEventListener('change', (e) => {{
     e.stopPropagation();
     if (cb.checked) {{
-      hiddenCommunities.delete(c.cid);
-      item.classList.remove('dimmed');
+      selectedCommunities.add(c.cid);
     }} else {{
-      hiddenCommunities.add(c.cid);
-      item.classList.add('dimmed');
+      selectedCommunities.delete(c.cid);
     }}
-    const updates = RAW_NODES
-      .filter(n => n.community === c.cid)
-      .map(n => ({{ id: n.id, hidden: !cb.checked }}));
-    nodesDS.update(updates);
-    updateSelectAllState();
+    refreshView();
   }});
   item.innerHTML = `<div class="legend-dot" style="background:${{c.color}}"></div>
     <span class="legend-label">${{c.label}}</span>
     <span class="legend-count">${{c.count}}</span>`;
   item.prepend(cb);
+  legendControls.set(c.cid, {{ item, cb }});
   item.onclick = (e) => {{
     if (e.target === cb) return;
     cb.checked = !cb.checked;
@@ -362,6 +543,7 @@ LEGEND.forEach(c => {{
   }};
   legendEl.appendChild(item);
 }});
+updateSelectAllState();
 </script>"""
 
 
@@ -433,6 +615,13 @@ def to_html(
     view would contain fewer than two communities and is intentionally skipped.
     """
     limit = node_limit if node_limit is not None else _viz_node_limit()
+    # HTML grouping is derived presentation state. Recover an absent/incomplete
+    # large-graph partition and missing labels without rewriting source artifacts.
+    from graphify.exporters.html_communities import prepare_html_communities
+    communities, community_labels = prepare_html_communities(
+        G, communities, community_labels,
+        recover_missing=node_limit is not None and G.number_of_nodes() > limit,
+    )
     if G.number_of_nodes() > limit:
         if node_limit is not None:
             # Build aggregated community meta-graph
@@ -443,11 +632,24 @@ def to_html(
             meta = _nx.Graph()
             for cid, members in communities.items():
                 meta.add_node(str(cid), label=(community_labels or {}).get(cid, f"Community {cid}"))
-            edge_counts = _Counter()
+            edge_counts, internal_counts, external_counts = _Counter(), _Counter(), _Counter()
             for u, v in G.edges():
                 cu, cv = node_to_community.get(u), node_to_community.get(v)
-                if cu is not None and cv is not None and cu != cv:
+                if cu is None or cv is None:
+                    continue
+                # Each canonical source edge counts once, including a self-loop
+                # or each parallel/directed edge represented by G. Boundary
+                # edges belong to both incident communities; no self-link is
+                # added to the aggregate merely to display internal connectivity.
+                if cu == cv:
+                    internal_counts[cu] += 1
+                else:
+                    external_counts[cu] += 1
+                    external_counts[cv] += 1
                     edge_counts[(min(cu, cv), max(cu, cv))] += 1
+            for cid in communities:
+                meta.nodes[str(cid)].update(internal_source_edges=internal_counts[cid],
+                                            external_source_edges=external_counts[cid])
             for (cu, cv), w in edge_counts.items():
                 meta.add_edge(str(cu), str(cv), weight=w,
                               relation=f"{w} cross-community edges", confidence="AGGREGATED")
@@ -480,6 +682,10 @@ def to_html(
                         "nodes": comm_ids,
                     })
                 meta.graph["hyperedges"] = remapped
+            # Community aggregation drops occurrence-level evidence. State that
+            # omission in the actual artifact instead of implying full Qt detail.
+            if has_qt_qml(G):
+                meta.graph["qt_qml_source_details_omitted"] = True
             written = to_html(meta, meta_communities, output_path,
                               community_labels=community_labels, member_counts=mc)
             if not written:
@@ -552,6 +758,17 @@ def to_html(
         }
         if member_counts:
             node["member_count"] = member_counts.get(cid, len(communities.get(cid, [])))
+            if not data.get("file_type") and not data.get("source_file"):
+                # This count names distinct other communities even when a
+                # supplied meta-graph has loops or reciprocal directed edges.
+                node["connected_communities"] = len(set(nx.all_neighbors(G, node_id)) - {node_id})
+                for field in ("internal_source_edges", "external_source_edges"):
+                    value = data.get(field)
+                    if type(value) is int and value >= 0:
+                        node[field] = value
+        # Project bounded human-readable Qt/QML fields while retaining the
+        # complete source contract and user attributes, without editing G.
+        node.update(semantic_fields(data))
         # Conditional learning fields — only present for annotated nodes, so
         # un-annotated output keeps the exact pre-feature node dict shape.
         entry = learning_overlay.get(str(node_id)) if learning_overlay else None
@@ -582,6 +799,7 @@ def to_html(
             if stale:
                 lesson += " [code changed — re-verify]"
             node["title"] = f"{label}\n{sanitize_label(lesson)}"
+        node["title"] += semantic_title(node)
         vis_nodes.append(node)
 
     # Build edges list. Restore original edge direction from _src/_tgt
@@ -598,11 +816,12 @@ def to_html(
             "from": true_src,
             "to": true_tgt,
             "label": relation,
-            "title": sanitize_label(f"{relation} [{confidence}]"),
+            "title": sanitize_label(f"{relation} [{confidence}]") + edge_title(data),
             "dashes": confidence != "EXTRACTED",
             "width": 2 if confidence == "EXTRACTED" else 1,
             "color": {"opacity": 0.7 if confidence == "EXTRACTED" else 0.35},
             "confidence": confidence,
+            **edge_fields(data),
         })
 
     # Build community legend data
@@ -613,9 +832,13 @@ def to_html(
         n = member_counts.get(cid, len(communities.get(cid, []))) if member_counts else len(communities.get(cid, []))
         legend_data.append({"cid": cid, "color": color, "label": lbl, "count": n})
 
-    # Escape </script> sequences so embedded JSON cannot break out of the script tag
+    # Escape every `<` as < so embedded JSON cannot break out of the <script>
+    # element. Escaping only `</` is not enough: an unclosed `<!--` then a later
+    # `<script` in a label drive the HTML tokenizer into script-data-double-escaped
+    # state, where the real `</script>` no longer closes the tag and the page goes
+    # blank (#4124). `<` round-trips through JSON.parse, so labels render unchanged.
     def _js_safe(obj) -> str:
-        return json.dumps(obj).replace("</", "<\\/")
+        return json.dumps(obj).replace("<", "\\u003c")
 
     nodes_json = _js_safe(vis_nodes)
     edges_json = _js_safe(vis_edges)
@@ -623,6 +846,8 @@ def to_html(
     hyperedges_json = _js_safe(getattr(G, "graph", {}).get("hyperedges", []))
     title = _html.escape(sanitize_label(_html_document_title(output_path)))
     stats = f"{G.number_of_nodes()} nodes &middot; {G.number_of_edges()} edges &middot; {len(communities)} communities"
+    if G.graph.get("qt_qml_source_details_omitted"):
+        stats += "<br>Qt/QML source details are omitted in this community view."
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -633,10 +858,27 @@ def to_html(
         integrity="sha384-Ux6phic9PEHJ38YtrijhkzyJ8yQlH8i/+buBR8s3mAZOJrP1gwyvAcIYl3GWtpX1"
         crossorigin="anonymous"></script>
 {_html_styles()}
+<script id="graphify-theme-init">
+// Apply the saved theme before first paint (#3894). No saved choice keeps the
+// historical dark look; "system" follows prefers-color-scheme.
+(function () {{
+  var pref = null;
+  try {{ pref = localStorage.getItem('graphify-theme'); }} catch (e) {{}}
+  var t = pref === 'light' ? 'light'
+    : pref === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light'
+    : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+}})();
+</script>
 </head>
 <body>
 <div id="graph"></div>
 <div id="sidebar">
+  <div id="theme-wrap" role="group" aria-label="Theme">
+    <button type="button" data-theme-choice="light">Light</button>
+    <button type="button" data-theme-choice="dark">Dark</button>
+    <button type="button" data-theme-choice="system">System</button>
+  </div>
   <div id="search-wrap">
     <input id="search" type="text" placeholder="Search nodes..." autocomplete="off">
     <div id="search-results"></div>
@@ -650,6 +892,8 @@ def to_html(
     <div id="legend-controls">
       <label><input type="checkbox" id="select-all-cb" checked onchange="toggleAllCommunities(!this.checked)">Select All</label>
     </div>
+    <div id="view-caption">Source communities: all available groups. Filter or search to focus.</div>
+    <div id="navigation-help">Hold the middle mouse button and drag to pan. Scroll the wheel to zoom.</div>
     <div id="legend"></div>
   </div>
   <div id="stats">{stats}</div>

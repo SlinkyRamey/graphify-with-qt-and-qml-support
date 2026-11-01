@@ -320,6 +320,24 @@ def test_null_conditional_this_field_receiver_resolves(tmp_path):
     assert (commit, cache_save) not in calls
 
 
+def test_null_conditional_bare_this_receiver_resolves(tmp_path):
+    """`this?.Save()` resolves like `this.Save()` (#4077)."""
+    calls, r = _calls(tmp_path, {
+        "S.cs": (
+            "public class Other { public bool Save() => false; }\n"
+            "public class Repo {\n"
+            "    public bool Save() => true;\n"
+            "    public bool? Commit() { return this?.Save(); }\n"
+            "}\n"
+        )
+    })
+    commit = _find(r, ".Commit()", "commit")
+    repo_save = _find(r, ".Save()", "repo")
+    other_save = _find(r, ".Save()", "other")
+    assert (commit, repo_save) in calls, "this?.Save() must resolve like this.Save()"
+    assert (commit, other_save) not in calls
+
+
 def test_null_conditional_cross_file_receiver_resolves(tmp_path):
     calls, r = _calls(tmp_path, {
         "Server.cs": (
@@ -333,6 +351,53 @@ def test_null_conditional_cross_file_receiver_resolves(tmp_path):
     })
     assert any("commit" in s and "server_save" in t for s, t in calls)
     assert not any("commit" in s and "cache_save" in t for s, t in calls)
+
+
+_STORE = (
+    "public interface IStore { void Save(); }\n"
+    "public class Store : IStore { public void Save() { } }\n"
+)
+
+
+def _store_call(tmp_path, editor_body: str):
+    """Call `IStore.Save()` from another file; return (calls, caller, IStore.Save, Store.Save)."""
+    calls, r = _calls(tmp_path, {
+        "Store.cs": _STORE,
+        "Editor.cs": (
+            "public class Editor {\n"
+            "    object _obj;\n"
+            "    IStore Store => (IStore)_obj;\n"
+            f"    public void Run() {{ {editor_body} }}\n"
+            "}\n"
+        ),
+    })
+    run = _find(r, ".Run()", "editor")
+    istore_save = _find(r, ".Save()", "istore")
+    store_save = next(n["id"] for n in r["nodes"]
+                      if n["label"] == ".Save()" and n["id"] != istore_save)
+    return calls, run, istore_save, store_save
+
+
+def test_cast_receiver_resolves_to_cast_type(tmp_path):
+    """`((IStore)_obj).Save()`: the cast names the receiver type (#3797)."""
+    calls, run, istore_save, store_save = _store_call(tmp_path, "((IStore)_obj).Save();")
+    assert (run, istore_save) in calls
+    assert (run, store_save) not in calls
+
+
+def test_as_cast_receiver_resolves_to_cast_type(tmp_path):
+    """`(_obj as IStore).Save()` types the receiver the same way (#3797)."""
+    calls, run, istore_save, store_save = _store_call(tmp_path, "(_obj as IStore).Save();")
+    assert (run, istore_save) in calls
+    assert (run, store_save) not in calls
+
+
+def test_property_receiver_shadows_same_named_type(tmp_path):
+    """`IStore Store => ...; Store.Save()`: inside Editor `Store` is the
+    property, so the call is IStore.Save, not the class Store's (#3797)."""
+    calls, run, istore_save, store_save = _store_call(tmp_path, "Store.Save();")
+    assert (run, istore_save) in calls
+    assert (run, store_save) not in calls
 
 
 def test_base_receiver_resolves_to_base_class_method(tmp_path):
@@ -660,15 +725,21 @@ def test_static_local_function_param_survives_out_var_reuse(tmp_path):
         )
     })
     outer = _find(r, ".Outer()", "_r_outer")
+    # Source-local callables now own their physical body calls. Preserve the
+    # original receiver/confidence regression while rejecting outer attribution.
+    inner = next(node["id"] for node in r["nodes"]
+                 if node["label"] == "Inner()" and node.get("metadata", {}).get("csharp_local_function"))
     alpha = _find(r, ".Alpha()", "target2")
     beta = _find(r, ".Beta()", "target2")
     gamma = _find(r, ".Gamma()", "target2")
-    assert (outer, alpha) in calls, \
+    assert (inner, alpha) in calls, \
         "typed local-function param must survive a same-named out-var elsewhere"
-    assert (outer, beta) in calls
+    assert (inner, beta) in calls
+    assert (outer, inner) in calls
     for tgt in (alpha, beta):
+        assert (outer, tgt) not in calls
         edge = next(e for e in r["edges"] if e["relation"] == "calls"
-                    and e["source"] == outer and e["target"] == tgt)
+                    and e["source"] == inner and e["target"] == tgt)
         assert edge["confidence"] == "INFERRED"
     assert (outer, gamma) not in calls, \
         "the out-var receiver itself stays untypable — no guessed edge, and no " \

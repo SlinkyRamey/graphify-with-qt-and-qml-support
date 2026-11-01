@@ -13,6 +13,7 @@ These tests pin the fixed contract:
 from __future__ import annotations
 
 from pathlib import Path
+import platform as host_platform
 
 import pytest
 
@@ -30,6 +31,17 @@ PLATFORMS = [
 ]
 
 
+@pytest.fixture(autouse=True, params=["Linux", "Windows"])
+def install_host_profile(monkeypatch, request):
+    """Exercise both destination contracts independently of the physical host."""
+    monkeypatch.setattr(host_platform, "system", lambda: request.param)
+
+
+def _plant_user_skill_tree(platform: str, dot_dir: str) -> Path:
+    """Plant the selected platform's own user tree on both host profiles."""
+    return _plant_skill_tree(Path.home(), dot_dir)
+
+
 def _plant_skill_tree(root: Path, dot_dir: str) -> Path:
     """Create <root>/<dot_dir>/skills/graphify/{SKILL.md, references/x.md, .graphify_version}."""
     skill_dir = root / dot_dir / "skills" / "graphify"
@@ -43,7 +55,7 @@ def _plant_skill_tree(root: Path, dot_dir: str) -> Path:
 @pytest.mark.parametrize("uninstall_fn,platform,dot_dir", PLATFORMS)
 def test_project_dir_call_never_touches_global(uninstall_fn, platform, dot_dir, tmp_path):
     """fn(project_dir) removes only the project skill tree (#2215 trap closed)."""
-    global_tree = _plant_skill_tree(Path.home(), dot_dir)
+    global_tree = _plant_user_skill_tree(platform, dot_dir)
     proj_dir = tmp_path / "proj"
     project_tree = _plant_skill_tree(proj_dir, dot_dir)
 
@@ -59,7 +71,7 @@ def test_project_dir_call_never_touches_global(uninstall_fn, platform, dot_dir, 
 @pytest.mark.parametrize("uninstall_fn,platform,dot_dir", PLATFORMS)
 def test_bare_call_still_removes_global(uninstall_fn, platform, dot_dir, tmp_path, monkeypatch):
     """fn() with no args keeps the historical CLI behavior: global skill removed."""
-    global_tree = _plant_skill_tree(Path.home(), dot_dir)
+    global_tree = _plant_user_skill_tree(platform, dot_dir)
     cwd = tmp_path / "empty-cwd"
     cwd.mkdir()
     monkeypatch.chdir(cwd)
@@ -73,7 +85,7 @@ def test_bare_call_still_removes_global(uninstall_fn, platform, dot_dir, tmp_pat
 @pytest.mark.parametrize("uninstall_fn,platform,dot_dir", PLATFORMS)
 def test_remove_user_skill_opt_in_with_project_dir(uninstall_fn, platform, dot_dir, tmp_path):
     """fn(pd, remove_user_skill=True) removes the global skill, leaves the project tree."""
-    global_tree = _plant_skill_tree(Path.home(), dot_dir)
+    global_tree = _plant_user_skill_tree(platform, dot_dir)
     proj_dir = tmp_path / "proj"
     project_tree = _plant_skill_tree(proj_dir, dot_dir)
 
@@ -88,7 +100,7 @@ def test_remove_user_skill_opt_in_with_project_dir(uninstall_fn, platform, dot_d
 @pytest.mark.parametrize("uninstall_fn,platform,dot_dir", PLATFORMS)
 def test_project_true_removes_only_project_tree(uninstall_fn, platform, dot_dir, tmp_path):
     """fn(pd, project=True) removes only the project skill tree."""
-    global_tree = _plant_skill_tree(Path.home(), dot_dir)
+    global_tree = _plant_user_skill_tree(platform, dot_dir)
     proj_dir = tmp_path / "proj"
     project_tree = _plant_skill_tree(proj_dir, dot_dir)
 
@@ -111,3 +123,36 @@ def test_project_uninstall_codebuddy_spares_global(tmp_path):
     assert (global_tree / ".graphify_version").exists()
     assert not (project_tree / "SKILL.md").exists()
     assert not project_tree.exists()
+
+
+import pytest as _pytest_posix
+
+
+@_pytest_posix.fixture(autouse=True)
+def _posix_skill_layout(monkeypatch):
+    """hermes installs to a different directory on Windows; these tests
+    assert the POSIX layout, so pin it."""
+    monkeypatch.setattr("platform.system", lambda: "Linux")
+
+
+def test_windows_gemini_install_and_uninstall_leave_the_agents_skill(tmp_path, monkeypatch, capsys):
+    """On Windows gemini used to install into ~/.agents/skills, the `agents`
+    platform's dir, so a gemini uninstall deleted the agents skill (#2800)."""
+    from graphify.install import gemini_install
+
+    monkeypatch.setattr("platform.system", lambda: "Windows")
+    agents_tree = _plant_skill_tree(Path.home(), ".agents")
+    proj_dir = tmp_path / "proj"
+    proj_dir.mkdir()
+    monkeypatch.chdir(proj_dir)
+
+    gemini_install(proj_dir)
+    assert (Path.home() / ".gemini" / "skills" / "graphify" / "SKILL.md").exists()
+    assert (agents_tree / "SKILL.md").read_text(encoding="utf-8") == "# graphify skill\n"
+    assert "loads" in capsys.readouterr().out  # the ~/.agents copy shadows this install
+
+    gemini_uninstall()
+    assert not (Path.home() / ".gemini" / "skills" / "graphify").exists()
+    assert (agents_tree / "SKILL.md").exists()
+    assert (agents_tree / "references" / "x.md").exists()
+    assert (agents_tree / ".graphify_version").exists()

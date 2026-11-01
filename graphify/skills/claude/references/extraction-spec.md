@@ -9,6 +9,22 @@ Output ONLY valid JSON matching the schema below - no explanation, no markdown f
 Files (chunk CHUNK_NUM of TOTAL_CHUNKS):
 FILE_LIST
 
+Read every file in this list COMPLETELY before extracting anything from it. The Read tool
+returns at most 2000 lines per call and reports NO error and NO warning when it truncates, so a
+long file silently yields a partial extraction. When a file is longer than one call, keep paging
+with offset/limit until you have actually seen its last line - never assume the first call
+returned the whole file. Never emit nodes for a file you have only partly read. A partial
+extraction is worse than none: replace-on-re-extract first DROPS that file's existing nodes and
+then re-adds only what you saw, so the unread tail disappears from the graph, and the file is then
+recorded as successfully extracted and never retried (#2225).
+
+Report the coverage you actually achieved, so a short read is caught instead of guessed at: add a
+top-level "coverage" object mapping each FILE_LIST path you extracted to the number of lines you
+read, e.g. {"coverage": {"docs/plan.md": 452}}. If you could not reach a file's last line, still
+report the count you did read. A short count is recoverable - Step B3 warns, the entry is cached
+as partial, and the next --update retries the file - whereas a missing entry is indistinguishable
+from a complete read.
+
 Rules:
 - EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
 - INFERRED: reasonable inference (shared data structure, implied dependency)
@@ -18,6 +34,7 @@ Code files: focus on semantic edges AST cannot find (call relationships, shared 
   Do not re-extract imports - AST already has those.
 Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node — do NOT create a separate rationale node or fragment node. Only create a node for something that is itself a named entity or concept. Use `file_type:"rationale"` for concept-like nodes (ideas, principles, mechanisms, design patterns). `file_type` MUST be one of exactly these six values: `code`, `document`, `paper`, `image`, `rationale`, `concept`. Any other value is invalid and will be rejected.
 Code files: when adding `calls` edges, source MUST be the caller (the function/class doing the calling), target MUST be the callee. Never reverse this direction. `calls` edges MUST stay within one language: a Python function cannot `calls` a JS/TS/Go/Rust/Java symbol and vice versa — cross-language call edges are phantom artifacts, never emit them.
+[Qt/QML] Preserve source-backed AST bridge facts and their existing IDs, contexts, spans and direction. Do not recreate QML/JavaScript/C++ bridges by matching labels. Declared signal connections, emissions and meta-object accesses are distinct from direct calls; never infer synchronous delivery or equate QML `id` with `objectName`.
 Image files: use vision to understand what the image IS - do not just OCR.
   UI screenshot: layout patterns, design decisions, key elements, purpose.
   Chart: metric, trend/insight, data source.
@@ -58,10 +75,12 @@ confidence_score is REQUIRED on every edge - never omit it, never use 0.5 as a d
   the edge AMBIGUOUS rather than picking 0.4 or below.
 - AMBIGUOUS edges: 0.1-0.3
 
-Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}` where stem is the **full repo-relative path with the extension dropped**, every path segment kept and joined with `_` (each segment lowercased with non-alphanumeric chars replaced by `_`), and entity is the symbol name similarly normalized. Use every directory level, not just the immediate parent — this keeps same-named files in different directories distinct. Examples: `src/auth/session.py` + `ValidateToken` → `src_auth_session_validatetoken`; `lib/utils/helpers.py` + `parse_url` → `lib_utils_helpers_parse_url`; `tests/test_foo.py` + `_helper` → `tests_test_foo_helper`; `docs/v1/api/README.md` + `getUser` → `docs_v1_api_readme_getuser`. Top-level files (no parent dir, e.g. `setup.py`) use just the filename stem: `setup_my_func`. This must match the ID the AST extractor generates — using just the filename (e.g., `session_validatetoken`) or only the immediate parent (e.g., `auth_session_validatetoken`) will create orphan ghost-duplicate nodes. If you are re-extracting a project built under the old immediate-parent format, the user should run `graphify extract --force` to rebuild cleanly. CRITICAL: never append chunk numbers, sequence numbers, or any suffix to an ID (no `_c1`, `_c2`, `_chunk2`, etc.). IDs must be deterministic from the label alone — the same entity must always produce the same ID regardless of which chunk processes it.
+Node ID format: lowercase, word characters only (`[^\W]` after casefolding — `[a-z0-9_]` for ASCII input, but non-ASCII letters and digits are kept as-is), no dots or slashes. Format: `{stem}_{entity}` where stem is the **full repo-relative path with the extension dropped**, every path segment kept and joined with `_` (each segment lowercased with non-alphanumeric chars replaced by `_`), and entity is the symbol name similarly normalized. Use every directory level, not just the immediate parent — this keeps same-named files in different directories distinct. Examples: `src/auth/session.py` + `ValidateToken` → `src_auth_session_validatetoken`; `lib/utils/helpers.py` + `parse_url` → `lib_utils_helpers_parse_url`; `tests/test_foo.py` + `_helper` → `tests_test_foo_helper`; `docs/v1/api/README.md` + `getUser` → `docs_v1_api_readme_getuser`. Top-level files (no parent dir, e.g. `setup.py`) use just the filename stem: `setup_my_func`. This must match the ID the AST extractor generates — using just the filename (e.g., `session_validatetoken`) or only the immediate parent (e.g., `auth_session_validatetoken`) will create orphan ghost-duplicate nodes. If you are re-extracting a project built under the old immediate-parent format, the user should run `graphify extract --force` to rebuild cleanly. CRITICAL: never append chunk numbers, sequence numbers, or any suffix to an ID (no `_c1`, `_c2`, `_chunk2`, etc.). IDs must be deterministic from the label alone — the same entity must always produce the same ID regardless of which chunk processes it.
+
+[Qt/QML] Reuse existing Qt/QML AST IDs verbatim when referencing those facts. Their component/member scope and exact source identity are already encoded; never replace them with a label-only ID or create a duplicate fact to satisfy the generic ID guidance above.
 
 Generate the extraction JSON matching this schema exactly:
-{"nodes":[{"id":"auth_session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale|concept","source_file":"<FILE_LIST path verbatim>","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"<FILE_LIST path verbatim>","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"<FILE_LIST path verbatim>"}],"input_tokens":0,"output_tokens":0}
+{"nodes":[{"id":"auth_session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale|concept","source_file":"<FILE_LIST path verbatim>","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"<FILE_LIST path verbatim>","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"<FILE_LIST path verbatim>"}],"input_tokens":0,"output_tokens":0,"coverage":{"<FILE_LIST path verbatim>":0}}
 
 source_file RULE (every node, edge, and hyperedge): set source_file to the path of the originating file EXACTLY as it appears in FILE_LIST — verbatim and absolute. Do NOT shorten to a basename, do NOT re-relativize, do NOT strip any directory prefix, and do NOT change separators (the engine canonicalizes separators and relativizes against the build root downstream). Copy the FILE_LIST entry character-for-character. This keeps the full build and incremental --update on the same base, so build_merge's replace-on-re-extract matches the existing node instead of accumulating a duplicate.
 

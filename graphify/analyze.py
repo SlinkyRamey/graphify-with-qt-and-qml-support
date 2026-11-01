@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import networkx as nx
 
-from graphify.build import edge_data
+from graphify.build import edge_data, edge_datas
+from graphify.source_relationships import is_source_graph, logical_endpoints
 
 # Builtin/mock names that can appear as annotation-derived nodes in pre-existing
 # graphs. Excluded from god-node ranking so they don't displace real abstractions
@@ -82,8 +83,12 @@ def _is_file_node(G: nx.Graph, node_id: str) -> bool:
         from graphify.build import _is_file_node_label
         if _is_file_node_label(label, source_file):
             return True
-    # Method stub: AST extractor labels methods as '.method_name()'
+    # Method stub: AST extractor labels methods as '.method_name()'; C# methods
+    # carry their owner for display ('Owner.method_name()', #4883).
     if label.startswith(".") and label.endswith("()"):
+        return True
+    from graphify.extractors.csharp import bare_csharp_method_label
+    if bare_csharp_method_label(label, source_file) is not None:
         return True
     # Module-level function stub: labeled 'function_name()' - only has a contains edge
     # These are real functions but structurally isolated by definition; not a gap worth flagging
@@ -197,6 +202,20 @@ def _is_concept_node(G: nx.Graph, node_id: str) -> bool:
     if "." not in source.split("/")[-1]:
         return True
     return False
+
+
+def _is_contains_only_ast_node(G: nx.Graph, node_id: str) -> bool:
+    """AST declarations (type aliases, enum members, local consts, JSON keys)
+    whose only edge is the structural `contains` from their declaring file are
+    working as designed, not documentation gaps (#4205)."""
+    from graphify.build import _is_ast_tier
+    attrs = G.nodes[node_id]
+    if not _is_ast_tier(attrs):
+        return False
+    if G.degree(node_id) != 1:
+        return False
+    edges = list(G.edges(node_id, data=True))
+    return len(edges) == 1 and edges[0][2].get("relation") == "contains"
 
 
 from graphify.detect import CODE_EXTENSIONS, DOC_EXTENSIONS, PAPER_EXTENSIONS, IMAGE_EXTENSIONS
@@ -388,22 +407,35 @@ def _cross_community_surprises(
             return []
         if G.number_of_nodes() > 5000:
             return []
-        betweenness = nx.edge_betweenness_centrality(G)
+        # Centrality measures topology, not the number of source mechanisms on
+        # a pair. Project explicitly; retain the accepted source graph intact.
+        topology = (nx.DiGraph(G) if G.is_directed() else nx.Graph(G)) if G.is_multigraph() else G
+        betweenness = nx.edge_betweenness_centrality(topology)
         top_edges = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[:top_n]
         result = []
+        # Source mechanisms remain distinct facts, but this fallback ranks one
+        # topology bridge per pair. Ordinary multigraphs retain upstream's
+        # per-relation rows; their parallel mechanisms are not source promises.
+        source_graph = is_source_graph(G)
         for (u, v), score in top_edges:
-            data = edge_data(G, u, v)
-            result.append({
-                "source": G.nodes[u].get("label", u),
-                "target": G.nodes[v].get("label", v),
-                "source_files": [
-                    G.nodes[u].get("source_file", ""),
-                    G.nodes[v].get("source_file", ""),
-                ],
-                "confidence": data.get("confidence", "EXTRACTED"),
-                "relation": data.get("relation", ""),
-                "note": f"Bridges graph structure (betweenness={score:.3f})",
-            })
+            observations = [edge_data(G, u, v)] if source_graph else edge_datas(G, u, v)
+            for data in observations:
+                source, target = logical_endpoints(G, u, v, data) if source_graph else (u, v)
+                result.append({
+                    "source": G.nodes[source].get("label", source),
+                    "target": G.nodes[target].get("label", target),
+                    "source_files": [
+                        G.nodes[source].get("source_file", ""),
+                        G.nodes[target].get("source_file", ""),
+                    ],
+                    "confidence": data.get("confidence", "EXTRACTED"),
+                    "relation": data.get("relation", ""),
+                    "note": f"Bridges graph structure (betweenness={score:.3f})",
+                })
+                if len(result) >= top_n:
+                    break
+            if len(result) >= top_n:
+                break
         return result
 
     # Build node → community map
@@ -468,6 +500,9 @@ def suggest_questions(
     Generate questions the graph is uniquely positioned to answer.
     Based on: AMBIGUOUS edges, bridge nodes, underexplored god nodes, isolated nodes.
     Each question has a 'type', 'question', and 'why' field.
+    Interleave question types before applying top_n so an abundant early type
+    cannot crowd out later signals. Preserve the existing order within each type
+    and category generation order when the limit is smaller than the type count.
     """
     if community_labels:
         community_labels = {int(k) if isinstance(k, str) else k: v for k, v in community_labels.items()}
@@ -475,7 +510,11 @@ def suggest_questions(
     questions = []
     node_community = _node_community_map(communities)
 
-    # 1. AMBIGUOUS edges → unresolved relationship questions
+    # 1. AMBIGUOUS edges → unresolved relationship questions.
+    # Tagged ``low_confidence=True`` (#4199): the audit trail stays
+    # intact but downstream renderers (report.py) move these into a
+    # separate "Low-confidence Hints" section so they do not compete
+    # with EXTRACTED/INFERRED bridges in the main list.
     for u, v, data in G.edges(data=True):
         if data.get("confidence") == "AMBIGUOUS":
             ul = G.nodes[u].get("label", u)
@@ -485,6 +524,7 @@ def suggest_questions(
                 "type": "ambiguous_edge",
                 "question": f"What is the exact relationship between `{ul}` and `{vl}`?",
                 "why": f"Edge tagged AMBIGUOUS (relation: {relation}) - confidence is low.",
+                "low_confidence": True,
             })
 
     # 2. Bridge nodes (high betweenness) → cross-cutting concern questions
@@ -549,14 +589,23 @@ def suggest_questions(
         if G.degree(n) <= 1
         and not _is_file_node(G, n)
         and not _is_concept_node(G, n)
+        and not _is_contains_only_ast_node(G, n)
         and G.nodes[n].get("file_type") != "rationale"
     ]
     if isolated:
+        has_semantic_layer = any(
+            G.nodes[n].get("file_type") in ("document", "paper", "image")
+            for n in G.nodes()
+        )
+        reason = (
+            "possible documentation gaps or missing edges" if has_semantic_layer
+            else "possible missing edges"
+        )
         labels = [G.nodes[n].get("label", n) for n in isolated[:3]]
         questions.append({
             "type": "isolated_nodes",
             "question": f"What connects {', '.join(f'`{l}`' for l in labels)} to the rest of the system?",
-            "why": f"{len(isolated)} weakly-connected nodes found - possible documentation gaps or missing edges.",
+            "why": f"{len(isolated)} weakly-connected nodes found - {reason}.",
         })
 
     # 5. Low-cohesion communities → structural questions
@@ -583,7 +632,16 @@ def suggest_questions(
             ),
         }]
 
-    return questions[:top_n]
+    from itertools import zip_longest
+
+    by_type: dict[str, list[dict]] = {}
+    for question in questions:
+        by_type.setdefault(question["type"], []).append(question)
+    diversified = [
+        question for row in zip_longest(*by_type.values())
+        for question in row if question is not None
+    ]
+    return diversified[:top_n]
 
 
 def graph_diff(G_old: nx.Graph, G_new: nx.Graph) -> dict:
@@ -614,28 +672,45 @@ def graph_diff(G_old: nx.Graph, G_new: nx.Graph) -> dict:
     ]
 
     def edge_key(G: nx.Graph, u: str, v: str, data: dict) -> tuple:
+        if is_source_graph(G):
+            return (*logical_endpoints(G, u, v, data), data.get("relation", ""))
         if G.is_directed():
             return (u, v, data.get("relation", ""))
         return (min(u, v), max(u, v), data.get("relation", ""))
 
-    old_edge_keys = {
-        edge_key(G_old, u, v, d)
+    def edge_dir(data: dict) -> tuple | None:
+        # Stored direction of an undirected edge (build_from_json, load_node_link_graph).
+        if "_src" in data and "_tgt" in data:
+            return (data["_src"], data["_tgt"])
+        return None
+
+    old_edge_dirs = {
+        edge_key(G_old, u, v, d): edge_dir(d)
         for u, v, d in G_old.edges(data=True)
     }
-    new_edge_keys = {
-        edge_key(G_new, u, v, d)
+    new_edge_dirs = {
+        edge_key(G_new, u, v, d): edge_dir(d)
         for u, v, d in G_new.edges(data=True)
     }
+    old_edge_keys = set(old_edge_dirs)
+    new_edge_keys = set(new_edge_dirs)
 
-    added_edge_keys = new_edge_keys - old_edge_keys
-    removed_edge_keys = old_edge_keys - new_edge_keys
+    # A reversed edge (a->b became b->a) keeps its undirected key. Report it as
+    # removed + added only when both snapshots carry _src/_tgt and they differ,
+    # so graphs without the markers diff exactly as before (#4067).
+    reversed_edge_keys = {
+        k for k in old_edge_keys & new_edge_keys
+        if old_edge_dirs[k] and new_edge_dirs[k] and old_edge_dirs[k] != new_edge_dirs[k]
+    }
+    added_edge_keys = (new_edge_keys - old_edge_keys) | reversed_edge_keys
+    removed_edge_keys = (old_edge_keys - new_edge_keys) | reversed_edge_keys
 
     new_edges_list = []
     for u, v, d in G_new.edges(data=True):
         if edge_key(G_new, u, v, d) in added_edge_keys:
             new_edges_list.append({
-                "source": u,
-                "target": v,
+                "source": d.get("_src", u),
+                "target": d.get("_tgt", v),
                 "relation": d.get("relation", ""),
                 "confidence": d.get("confidence", ""),
             })
@@ -644,8 +719,8 @@ def graph_diff(G_old: nx.Graph, G_new: nx.Graph) -> dict:
     for u, v, d in G_old.edges(data=True):
         if edge_key(G_old, u, v, d) in removed_edge_keys:
             removed_edges_list.append({
-                "source": u,
-                "target": v,
+                "source": d.get("_src", u),
+                "target": d.get("_tgt", v),
                 "relation": d.get("relation", ""),
                 "confidence": d.get("confidence", ""),
             })
@@ -710,12 +785,14 @@ def find_import_cycles(
 
         # Deferred `import(...)` edges are real dependencies but do not form a
         # hard file-level cycle, so they are excluded from cycle detection (#1241).
-        if data.get("deferred"):
-            continue
         # Type-only imports/re-exports (`import type` / `export type ... from`)
         # are erased at compile time - a cycle that closes through one cannot
         # exist at runtime (#3123). The edge itself stays in the graph.
-        if data.get("type_only"):
+        forward = not data.get("deferred") and not data.get("type_only")
+        # An undirected build keeps one edge per file pair, so the other file's
+        # runtime import back is only a stamp on this edge (#4839).
+        reverse = bool(data.get("reverse_import"))
+        if not forward and not reverse:
             continue
 
         src_file_attr = data.get("source_file", "")
@@ -740,7 +817,10 @@ def find_import_cycles(
         if not tgt_file:
             continue
 
-        file_graph.add_edge(src_file_attr, tgt_file)
+        if forward:
+            file_graph.add_edge(src_file_attr, tgt_file)
+        if reverse:
+            file_graph.add_edge(tgt_file, src_file_attr)
 
     if not file_graph.edges():
         return []

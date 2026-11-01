@@ -48,15 +48,8 @@ def _save_manifest(manifest: dict) -> None:
 
 def _load_global_graph() -> nx.Graph:
     if _GLOBAL_GRAPH.exists():
-        from graphify.security import check_graph_file_size_cap
-        check_graph_file_size_cap(_GLOBAL_GRAPH)
-        data = json.loads(_GLOBAL_GRAPH.read_text(encoding="utf-8"))
-        if "links" not in data and "edges" in data:
-            data = dict(data, links=data["edges"])
-        try:
-            return _jg.node_link_graph(data, edges="links")
-        except TypeError:
-            return _jg.node_link_graph(data)
+        from graphify.paths import load_node_link_graph
+        return load_node_link_graph(_GLOBAL_GRAPH)
     return nx.Graph()
 
 
@@ -67,7 +60,7 @@ def _save_global_graph(G: nx.Graph) -> None:
     except TypeError:
         data = _jg.node_link_data(G)
     from graphify.paths import write_json_atomic
-    write_json_atomic(_GLOBAL_GRAPH, data, indent=2)
+    write_json_atomic(_GLOBAL_GRAPH, data, compact=True)
 
 
 def _file_hash(path: Path) -> str:
@@ -83,7 +76,8 @@ def global_add(source_path: Path, repo_tag: str) -> dict:
     cross_repo_calls.
     Skipped=True means the source graph hasn't changed since last add.
     """
-    from graphify.build import prefix_graph_for_global, prune_repo_from_graph
+    from graphify.build import add_source_relationship, prefix_graph_for_global, prune_repo_from_graph
+    from graphify.source_relationships import make_source_graph, source_profile
 
     if not source_path.exists():
         raise FileNotFoundError(f"graph not found: {source_path}")
@@ -108,18 +102,26 @@ def global_add(source_path: Path, repo_tag: str) -> dict:
     from graphify.security import check_graph_file_size_cap
     check_graph_file_size_cap(source_path)
     data = json.loads(source_path.read_text(encoding="utf-8"))
-    if "links" not in data and "edges" in data:
-        data = dict(data, links=data["edges"])
-    try:
-        src_G = _jg.node_link_graph(data, edges="links")
-    except TypeError:
-        src_G = _jg.node_link_graph(data)
+    from graphify.paths import load_node_link_graph
+    src_G = load_node_link_graph(data)
 
     # Prefix IDs for cross-project isolation
     prefixed = prefix_graph_for_global(src_G, repo_tag)
 
-    # Load global graph and prune stale nodes for this repo
+    # A typed source may promote an existing legacy store. Copy accepted edges
+    # through their shared relationship policy before pruning/replacing this
+    # repo; no source re-normalization or endpoint-label matching is involved.
     G = _load_global_graph()
+    previous_profile = source_profile(G.nodes(data=True), G.graph)
+    incoming_profile = source_profile(prefixed.nodes(data=True), prefixed.graph)
+    if previous_profile or incoming_profile:
+        metadata = dict(G.graph) if previous_profile else {**prefixed.graph, **G.graph}
+        adopted = make_source_graph([*G.nodes(data=True), *prefixed.nodes(data=True)],
+                                    directed=G.is_directed(), graph_metadata=metadata)
+        adopted.add_nodes_from(G.nodes(data=True))
+        for source, target, attrs in G.edges(data=True):
+            add_source_relationship(adopted, source, target, attrs)
+        G = adopted
     removed = prune_repo_from_graph(G, repo_tag)
 
     # Merge external-library nodes (no source_file) by label to avoid duplication
@@ -142,8 +144,13 @@ def global_add(source_path: Path, repo_tag: str) -> dict:
     for u, v, data in prefixed.edges(data=True):
         u = remap.get(u, u)
         v = remap.get(v, v)
+        # The direction markers name endpoints too; rewire them with u/v so
+        # they never point at a deduplicated (absent) external node.
+        for key in ("_src", "_tgt"):
+            if data.get(key) in remap:
+                data = {**data, key: remap[data[key]]}
         if u != v:  # don't introduce self-loops via remapping
-            G.add_edge(u, v, **data)
+            add_source_relationship(G, u, v, data)
 
     added = prefixed.number_of_nodes() - len(remap)
     # A member call parked on a caller node (#3152) may be answered by a repo
