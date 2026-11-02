@@ -101,6 +101,12 @@ def validate_parent_cohort(nodes, edges, *, directed, identity, unique_nodes=Tru
         if (not isinstance(edge, dict) or not all(identity(edge.get(key)) for key in ("source", "target"))
                 or not isinstance(edge.get("relation"), str) or not edge["relation"].strip()):
             raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid source relationship link")
+        # A promised parent owns every supplied endpoint spelling. Check raw
+        # aliases before compatibility adapters can select or overwrite them.
+        for primary, alias in (("source", "from"), ("target", "to")):
+            if alias in edge and (type(edge[alias]) is not type(edge[primary])
+                                  or edge[alias] != edge[primary]):
+                raise ValueError("SOURCE_RELATIONSHIPS_INVALID: conflicting endpoint alias")
         for key in ("source", "target"):
             if edge[key] in ids:
                 valid = ids[edge[key]] is type(edge[key])
@@ -111,6 +117,28 @@ def validate_parent_cohort(nodes, edges, *, directed, identity, unique_nodes=Tru
         if logical_endpoints(edge["source"], edge["target"], edge, directed=directed) is None:
             raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid source relationship direction")
         complete_records(edge)
+
+
+def graph_parent_record(source, target, edge, *, directed):
+    """Copy one accepted graph arc into a canonical publication frame.
+
+    Undirected storage may reverse an accepted pair. Existing aliases must
+    match one coherent exact-type orientation before their detached copy follows
+    logical direction. This adapter is never used to validate raw input views.
+    """
+    pair = logical_endpoints(source, target, edge, directed=directed)
+    if pair is None:
+        raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid source relationship direction")
+    orientations = (pair,) if directed else (pair, pair[::-1])
+    if not any(all(name not in edge or (type(edge[name]) is type(value) and edge[name] == value)
+                   for name, value in zip(("from", "to"), orientation))
+               for orientation in orientations):
+        raise ValueError("SOURCE_RELATIONSHIPS_INVALID: conflicting endpoint alias")
+    result = dict(edge, source=pair[0], target=pair[1])
+    for name, value in zip(("from", "to"), pair):
+        if name in result:
+            result[name] = value
+    return result
 
 
 def validate_transport_cohort(data, *, identity, raw=False):

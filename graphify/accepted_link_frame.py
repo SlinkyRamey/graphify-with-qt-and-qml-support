@@ -49,13 +49,16 @@ class AcceptedLinkFrame:
             self.positions.setdefault(id(edge), []).append(index)
 
     @staticmethod
-    def seed_external_targets(graph, edges, node_ids, normalized, *, normalize, mint, prepare, admit, relations) -> None:
+    def seed_external_targets(graph, edges, node_ids, normalized, *, normalize, mint, prepare, admit, relations,
+                              resolve=None) -> None:
         """Admit each import once when its exact source gains existing authority.
 
         A source-indexed queue closes the complete import cohort without an
         input-order dependency or repeated corpus scans. The existing builder
         supplies preparation/admission; call-only facts and unanchored cycles
         cannot mint targets (#3156), and rejected imports enqueue nothing.
+        A supplied resolver belongs to the builder; the frame invokes it only
+        for admitted string endpoints, retaining the legacy normalized fallback.
         """
         pending = {}
         for position, edge in enumerate(edges):
@@ -70,9 +73,9 @@ class AcceptedLinkFrame:
             except TypeError:
                 continue
             if source not in node_ids and isinstance(source, str):
-                source = normalized.get(normalize(source), source)
+                source = resolve(source, edge) if resolve else normalized.get(normalize(source), source)
             if isinstance(target, str) and target not in node_ids:
-                target = normalized.get(normalize(target), target)
+                target = resolve(target, edge) if resolve else normalized.get(normalize(target), target)
             if isinstance(target, str):
                 pending.setdefault(source, []).append((str(target), str(edge.get("relation")), position, edge, target))
         queue, visited = deque(sorted(node_ids, key=str)), set()

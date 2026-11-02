@@ -304,7 +304,7 @@ def existing_graph_node_count(path: "str | Path"):
 def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *, force: bool = False, built_at_commit: str | None = None, community_labels: dict[int, str] | None = None, original_links: "list[dict] | None" = None) -> bool:
     # Drop #3774 accounting before any write. Extract pops these first; every
     # other caller of to_json (the documented build_merge persist path) does not.
-    from graphify.build import _is_external_stub, add_source_relationship, take_shrink_accounting
+    from graphify.build import _is_external_stub, add_source_relationship, take_dedup_remap, take_shrink_accounting
     from graphify.qt_import_retention import (
         FIELD, apply_import_retention, node_link_view, read_import_retention,
     )
@@ -314,7 +314,8 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
                         if FIELD in G.graph else frozenset())
     from graphify.source_relationships import is_source_graph, prepare_source_links, source_profile, storage_key
     from graphify.extractors.cpp_type_references import validate_type_reference_export
-    source_accounting = {}
+    source_accounting: dict[str, object] = {}
+    dedup_remap = {}
     try:
         # Preserve known source restrictions before accounting or output handling.
         validate_type_reference_export(G, original_links)
@@ -326,15 +327,26 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
             # Validate once before publication; no counter conversion may fail
             # after the atomic write has already accepted the output.
             try:
-                source_accounting = {key: int(G.graph.get(key, 0) or 0)
-                                     for key in ("_dedup_collapsed", "_pruned_node_count")}
+                source_accounting = {
+                    key: int(G.graph.get(key, 0) or 0)
+                    for key in ("_dedup_collapsed", "_pruned_node_count")}
             except (TypeError, ValueError, OverflowError):
                 raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid source accounting") from None
+            # Source retry evidence belongs to the accepted graph until its
+            # replacement succeeds; validate/copy it instead of consuming it.
+            remap = G.graph.get("_dedup_remap", {})
+            if not isinstance(remap, dict) or any(
+                    not isinstance(loser, str) or not loser or not isinstance(survivor, str) or not survivor
+                    for loser, survivor in remap.items()):
+                raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid source dedup accounting")
+            dedup_remap = dict(remap)
+            source_accounting["_dedup_remap"] = dedup_remap
     except ValueError as exc:
         print(f"[graphify] error: {exc}; JSON was not written.", file=sys.stderr)
         return False
     if not source_mode:
         take_shrink_accounting(G)
+        dedup_remap = take_dedup_remap(G)
     # Safety check: refuse to silently shrink an existing graph (#479)
     existing_path = Path(output_path)
     if not force and existing_path.exists():
@@ -381,13 +393,15 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
                     )
                     return False
             new_n = G.number_of_nodes()
-            from graphify.build import _lost_saved_semantic_nodes
+            from graphify.build import _dedup_shrink_allowance, _lost_saved_semantic_nodes
             new_node_list = [
                 {"id": node_id, **{key: value for key, value in attrs.items() if key != "id"}}
                 for node_id, attrs in G.nodes(data=True)
             ]
             folded: dict[str, str] = {}
-            missing = _lost_saved_semantic_nodes(existing_nodes, new_node_list, set(), folded)
+            missing = _lost_saved_semantic_nodes(
+                existing_nodes, new_node_list, set(), folded, dedup_remap=dedup_remap,
+            )
             if missing:
                 import sys as _sys
                 ids = ", ".join(str(node.get("id")) for node in missing)
@@ -402,6 +416,11 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
             # A twin new to this run does not offset some other node's loss.
             existing_ids = {n.get("id") for n in existing_nodes if isinstance(n, dict)}
             merged = sum(twin in existing_ids for twin in folded.values())
+            # Ids entity dedup folded into a survivor are not lost either (#4940).
+            if dedup_remap:
+                merged += _dedup_shrink_allowance(
+                    existing_ids, set(G.nodes), dedup_remap,
+                )
             if new_n < existing_n - merged:
                 import sys as _sys
                 print(
@@ -472,6 +491,10 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
             data["multigraph"] = True
     # Validate preserved parallel links through the same Qt direction boundary.
     from graphify.qt_export import logical_endpoints
+    if source_mode:
+        from graphify.source_relationship_evidence import graph_parent_record
+        data["links"] = [graph_parent_record(link["source"], link["target"], link, directed=G.is_directed())
+                         for link in data["links"]]
     for link in data["links"]:
         if "confidence_score" not in link:
             conf = link.get("confidence", "EXTRACTED")

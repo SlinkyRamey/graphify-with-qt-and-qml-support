@@ -5825,6 +5825,70 @@ remain separately bound and are not added into a fictional single invocation.
 Final raw package/installed/full/corpus/hosted and repository refresh now belong
 to the resulting reviewed source; earlier failed packages/environments stay intact.
 
+### INC-QML-133 — Reviewed upstream 0.9.101 compatibility refresh
+
+Scope decision before manual conflict correction: integrate the frozen upstream
+`8e6a6d2129d4aeffc7a0e9ed79b153f7f057f42b` into the retained contribution branch
+after its fast-forward to verified fork result
+`bcda696f2d1f78844dcfda23b497898077a2b869`. This is the next cohesive reviewed
+update; the completed INC132 proof remains bound to its original source/base/
+checkout. Create one new fork-v8 PR and update the existing upstream PR4682.
+Neither review is automatically merged. Application/global installations and
+the separately pending ScalarAI adoption are outside this maintenance increment.
+
+Affected acceptance: REQ-QML-003-AC04, REQ-QML-010-AC01/AC02/AC03,
+REQ-QML-011-AC01/AC03/AC04, REQ-QML-012-AC01/AC02/AC04,
+REQ-QML-013-AC03, REQ-QML-014-AC01/AC02/AC03/AC04,
+REQ-QML-015-AC01/AC02/AC03, REQ-QML-018-AC05/AC06,
+REQ-QML-022-AC02/AC06 and REQ-CORE-004-AC02/AC03. Incoming generic
+source/evidence behavior is specified by REQ-CORE-006; no additional Qt SDK or
+runtime completeness is inferred.
+
+| Boundary | Success and boundary acceptance | Rejection, failure and recovery |
+| --- | --- | --- |
+| C++ and unrelated extraction | Per-callable receivers, qualified type/alias identities, exact included declaration ownership and language-specific local-callable shadowing compose with Qt member provenance and distinct connection facts. | Conflicting providers and unsupported receivers remain unresolved; malformed input cannot invent a runtime target or erase accepted declarations. |
+| Graph reconciliation | Same-language aliases share the builder's authoritative caller frame; independently sourced semantic evidence survives AST refresh, including same-ID collisions and multi-source aliases. | Cross-language aliases, unproven metadata and invalid typed transport cannot borrow source authority; prior accepted products and accounting survive rejected writes. |
+| Refresh/cache | Native code-only admission, saved semantic contributions and platform-correct cache identity remain consistent. AST41 retires upstream36 and fork40 raw entries while retaining their historical invalidation reasons, independent semantic namespace ownership, Qt policy33 and projection4. Incoming case-correct path hashing can miss historical differently cased semantic keys. | Real cache/write faults reach the current destination and retain/recover the prior graph. Lock availability and controller lifetime keep their existing accepted-product policy; no deadline or assertion is relaxed. |
+| Reviewed delivery | Local focused/full, static/generated, source-matched wheel/core/QML consumers, native source inventory and AST-only repository graph qualify the reviewed source. | Hosted checks belong to the new PR event and actual source/base/checkout; skipped or unexecuted lanes are not passes. Future resulting-commit proof requires a separately authorized merge. |
+
+Ownership: root controls Git, requirements/design/traceability, existing current-
+epoch assertions, native inventory, packaging and PR publication. Delegates own
+disjoint C++ extraction, state/cache, and build/export files plus separate new
+regression modules. All fourteen unrelated coverage/result files have hashed,
+restorable copies under ignored `.venv/upstream-sync-maintenance/20261102-upstream-0101`.
+No second checkout, force-push, protection changes or duplicate workflows.
+
+Status: **Integration implemented; focused local qualification passes; full,
+artifact and hosted verification pending.** Existing checkpoints
+are historical evidence, not acceptance of this source or any new merge result.
+
+Scope refinements recorded during the combined-boundary audit: source-mode
+publication must retain dedup accounting on real failures; semantic collision
+renames must carry validated direction without accidentally curing malformed
+future-ID markers. The separately reproduced preexisting endpoint-alias gap is
+corrected only for promised raw transport, including unused aliases and combined
+chunks. Accepted undirected graph views require a separate bounded physical-order
+adapter, not relaxed raw admission. Windows logical stat-index roots must not
+flush merely because the same physical root has an extended prefix. These are
+REQ-CORE-006-AC02/AC04 and existing Qt persistence/direction criteria; each keeps
+its original failure witness and new automatically collected regression.
+
+The C++ compatibility probes also require specialized constructor rejection to
+precede generic attachment, and included method ownership to precede precise
+free-call routing. Metadata-only Rust crate-boundary transitions exposed a stale
+process-global lookup despite warm raw syntax; one memo per owning resolution
+invocation corrects that lifetime without a new ambient project-root owner.
+REQ-CORE-006-AC01/AC04 and REQ-QML-008-AC02/AC03 retain transition, recovery,
+context immutability and cold/warm witnesses. Ordinary bounded untyped in-file
+legacy resolution is not redefined as proven receiver binding.
+
+The integrated watcher also crossed the static analyzer's control-flow limit.
+After its existing semantic-document matrix and a real dispatch characterization,
+extract one pure same-file semantic-backed-document classification phase, keeping
+inputs/order/fallback, mutable state and persistence owners unchanged. This is a
+bounded analyzability refactor under the same acceptance criteria, not a type-
+ignore, runtime change or unrelated monolith migration.
+
 ### INC-QML-132 — Upstream 0.9.100 integration and authorized fork merge
 
 Scope decision and acceptance matrix before manual conflict correction: integrate

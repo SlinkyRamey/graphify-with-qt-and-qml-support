@@ -3544,3 +3544,136 @@ growth. The native platform characterization remains below300 lines and uses
 the runner's existing pure selection owner instead of evaluating an orphaned
 call expression. Authoritative skill commentary may be shortened without
 removing executable examples, policy, provenance links or Qt/QML guidance.
+
+## INC-QML-133 integrated source authority and state ownership
+
+Root owns integration and publication; the extractor, state/cache and
+build/export delegates have disjoint files. Incoming upstream 0.9.101 behavior
+is retained alongside existing Qt source facts. There is no second runtime,
+application refresh, privileged workflow or new persistence framework.
+
+The builder remains the sole endpoint-resolution owner. Its language-gated
+resolver is also passed into `AcceptedLinkFrame.seed_external_targets` so native
+ownership grouping, imported placeholder admission and ordinary edge insertion
+share one caller/source-language frame. The callback is optional for established
+callers; the frame continues to own accepted-row correspondence and final commit.
+No copied index or independent alias-repair owner is introduced.
+
+Raw promised transport and graph-derived presentation are distinct boundaries.
+Every supplied collection/mode and endpoint alias is validated before an
+extraction chunk is accumulated or an alternate export view can be coerced.
+Promised `source/from` and `target/to` spellings must have equal values and exact
+types. Ordinary unpromised legacy inputs retain their existing tolerance. The
+previously permissive alias gap is a newly exposed preexisting defect, not an
+incoming upstream regression. Independent negative witnesses cover it.
+
+An already accepted undirected NetworkX graph can enumerate an edge in the
+opposite physical order. A bounded graph-view adapter validates its known
+logical direction and coherent endpoint aliases before copying into that
+enumeration frame. It does not confer this permission on raw alternate input or
+directed graphs, repair foreign/partial markers, use a storage key as evidence,
+or mutate borrowed attributes merely to render/export them. The source-evidence
+module owns this adapter; the source-transport facade and exporter reuse it.
+
+Saved-semantic namespace remapping carries only an already coherent caller
+frame. Check logical markers and every supplied endpoint alias before changing
+physical IDs; leaving a corrupt marker untouched after changing its physical
+endpoint can accidentally make the corrupt input valid. Matching derived storage
+keys can follow an accepted logical rename, but cannot establish source truth.
+Source-mode dedup accounting is validated and borrowed during publication; a
+rejection or actual replace failure retains it for retry. Successful atomic
+publication consumes that accounting and excludes it from persisted metadata.
+The ordinary upstream legacy accounting behavior remains explicit.
+
+C++ cross-file include resolution establishes the accepted declaration owner
+before precise bare/free-call resolution. Invocation-local routing distinguishes
+a proven included-member dispatch from a free call; it is neither persisted raw
+syntax evidence nor a runtime relationship. Removing or conflicting an include
+must retire that authority, and adding valid evidence permits recovery. Accepted
+corpus indexes and cache/persistence ownership stay at their existing boundaries.
+
+Generic included-owner attachment excludes constructor occurrences already owned
+by the specialized native binder. A rejected constructor signature/type authority
+cannot acquire ownership merely because the generic class name is visible.
+Namespace-distinct literal declarations can retain their exact source owner;
+truly conflicting qualified providers remain unresolved. The strengthened incoming
+namespace fixture records this intended contract separately from product fixes.
+
+Rust crate-boundary lookup uses one explicit memo per resolution invocation,
+shared by that invocation's calls and discarded afterward. The facade and
+standalone resolver both own this lifetime. Relative accepted-context paths use
+the explicit scan root; no ambient mutable project root or per-unit corpus index
+is added. Adding/removing a Cargo manifest is source-analysis metadata, never a
+request to execute Cargo, and must retire/recover stale cross-crate calls even
+when Rust source bytes are unchanged and raw AST entries are warm.
+This proof applies when the accepted Rust corpus is resolved again through the
+facade or standalone resolver; it does not establish automatic watcher admission
+and dependency rerouting for every Cargo-only event.
+
+AST41 retires fork40 and upstream36 producer entries while retaining the complete
+historical invalidation rationale. Qt policy33 and projection4 are unchanged.
+Semantic cache namespace lifetime remains independent of the AST epoch; incoming
+case-correct path hashing can legitimately miss historical differently cased
+semantic keys. Physical Windows long-path I/O remains separate from the logical
+index root/anchor: ordinary and extended spellings of one root must not cause a
+premature stat-index flush on a rejected candidate. UNC prefix normalization is
+characterized lexically without claiming a live network filesystem test.
+
+Incoming requested build-scope settings retain their existing pre-analysis
+configuration lifetime. A failed analysis can retain the requested `code_only`
+setting while retaining the previous graph/manifest/Qt-stamp cohort. A graph
+rollback claim does not imply transactional rollback of every requested setting.
+Lock availability, actual replacement completion and recovery keep their owning
+diagnostics; no accepted-product guard or controller deadline is relaxed.
+
+Legacy cohesion exceptions for this integration (physical measured ceilings;
+owner: integration maintainer): builder3520, export1600, dedup1920, cache2000,
+watch3700, CLI5650, extract12300, engine11600, symbol-resolution740 and LLM4000.
+These preserve existing shared owners and incoming generic changes; no unrelated
+mechanical extraction is mixed with resolution. Actual measured sizes and test
+results are recorded in traceability. Review/extract the complete responsibility
+under characterization before unrelated growth or exceeding its ceiling. New
+focused regression modules and the evidence/frame/source facades remain below300
+lines; the existing workflow remains under its documented700-line ceiling.
+
+Measured legacy scope for INC133 (R to reviewed work; all ceilings are physical
+lines). Integration owns these changes while upstream's complete responsibilities
+remain together. At the next change to the listed responsibility, characterize
+its public boundary before extracting that complete phase; do not add forwarding-
+only fragments or combine an unrelated mechanical port with this correction.
+
+| Existing owner | Before → current | Ceiling | Focused extraction/review boundary |
+| --- | --- | --- | --- |
+| build | 3339 → 3509 | 3520 | Authoritative endpoint admission and assembly |
+| export | 1543 → 1565 | 1600 | Validated publication and accounting completion |
+| dedup | 1807 → 1876 | 1920 | Saved-reference namespace/frame conversion |
+| cache | 1949 → 1972 | 2000 | Logical index identity and physical persistence |
+| watch | 3444 → 3655 | 3700 | Reconciliation and accepted-product lifetime |
+| CLI | 5575 → 5608 | 5650 | Requested scope versus completed publication |
+| detect | 3248 → 3256 | 3270 | Authoritative admitted-corpus discovery |
+| extract | 11978 → 12164 | 12300 | Per-invocation ownership/resolution phases |
+| extractor engine | 11322 → 11499 | 11600 | Follow the specialized language migration playbook |
+| Go extractor | 925 → 976 | 1000 | Whole Go source-evidence phase |
+| Rust extractor | 989 → 1120 | 1150 | Whole Rust token-tree/source-evidence phase |
+| symbol resolution | 577 → 726 | 740 | Scoped cross-file invocation and index lifetime |
+| LLM integration | 3936 → 3979 | 4000 | Slice-complete checkpoints and accepted evidence |
+| test_build | 2173 → 2246 | 2250 | Existing builder/provenance fixture family |
+| test_extract_code_only_cli | 433 → 434 | 450 | Real CLI requested-scope lifecycle fixtures |
+| test_lost_saved_semantic_nodes | 218 → 334 | 350 | Existing saved-evidence transition family |
+| test_no_cluster_undeclared_endpoints | 275 → 313 | 330 | Accepted source/export endpoint invariants |
+| test_src_layout_import_resolution | 367 → 441 | 460 | Source-layout import-resolution fixtures |
+| test_watch | 5661 → 6014 | 6050 | Existing watcher reconciliation/metadata family |
+
+New focused files remain below300 lines; the two inherited test families that
+cross300 are specifically bounded above rather than silently exempted. The
+optional standalone resolver `root` keyword preserves existing positional calls.
+
+The combined watcher tipped Pyright's control-flow analysis limit although each
+parent remained analyzable. Existing semantic-document characterization and a
+real producer-dispatch witness ran before extracting one pure same-file
+`_semantic_backed_documents` classification phase. It receives the accepted prior
+graph/path adapter, explicit root and existing tier predicate; returns a local
+set in unchanged traversal order; and owns no I/O, cache, graph mutation or
+persistence. Adapter creation, exception fallback, dispatch and publication remain
+in `_rebuild_code`. The same before/after cases and a fresh type analysis qualify
+the move without suppressing a diagnostic or changing accepted behavior.

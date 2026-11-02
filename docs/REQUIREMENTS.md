@@ -893,6 +893,49 @@ Status: **Implemented in INC-QML-132; final full/installed/native qualification 
 failed the changed-caller parity probe; corrected source and installed/native/full
 evidence are required. Earlier compatibility evidence is not acceptance here.
 
+### REQ-CORE-006 — Upstream source authority survives integrated analysis
+
+The integrated analyzer shall preserve the reviewed upstream source-resolution
+and accepted-evidence rules alongside Qt/QML contracts. Static relationships
+retain their declaring language, callable/type scope and independent provenance;
+incidental labels, storage aliases and richer metadata cannot create authority.
+
+**Acceptance Criteria**
+
+1 - Qualified C++ types, aliases, included declarations and per-callable typed
+receivers retain their source-proven targets through extraction and assembly;
+conflicting providers and local callable shadowing cannot borrow unrelated
+cross-file targets. Existing bounded untyped in-file legacy resolution remains
+explicitly separate from proven receiver binding. Generic owner attachment must
+not override specialized constructor rejection. Python, Go and Rust resolution
+controls retain their own lexical and language boundaries, including project-
+boundary metadata changes at unchanged source bytes between invocations.
+`REQ-CORE-006-AC01`
+
+2 - Graph endpoint aliases obey the source language and the authoritative caller
+frame, including native ownership and external-target admission. Full build,
+export/reload and incremental reconciliation agree; conflicting or invalid typed
+inputs reject without losing prior accepted graph bytes or failure accounting.
+`REQ-CORE-006-AC02`
+
+3 - AST replacement preserves genuinely independent saved semantic evidence,
+including same-ID and multi-source aliases, while sourceless metadata cannot
+outvote a source declaration. Code-only scope, deduplicated shrink accounting and
+slice-complete checkpoints cannot silently certify omitted accepted input.
+`REQ-CORE-006-AC03`
+
+4 - The current AST namespace invalidates both predecessor producer families at
+unchanged package/source identity; semantic-cache ownership, platform-sensitive
+path identity and guarded publication remain intact. Real persistence failures
+preserve prior accepted products, report the owning safe boundary and permit a
+successful retry without changing supported platform coverage or deadlines.
+`REQ-CORE-006-AC04`
+
+Status: **Implemented in INC-QML-133; focused local profiles pass. Full and hosted
+verification remain pending.**
+Exact tests, profiles, failures and remaining system gaps belong to traceability.
+This requirement does not assert complete Qt SDK coverage or execute corpus code.
+
 ## Current-upstream integration profile
 
 INC-QML-49 retains existing externally observable requirements while integrating
