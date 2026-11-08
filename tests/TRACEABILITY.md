@@ -6126,8 +6126,9 @@ associations. MathWorks reported Aerospace Blockset in the aggregate and
 multiple possible 3D product owners in its MATLAB scan. The graph records
 the documented association to Simulink 3D Animation with shared ownership.
 The two direct Parallel Computing misses from assigned `load` were corrected.
-One native-certain Control System Toolbox file still uses overloads outside
-the catalog, including `ss`. The per-file comparison retains all differences.
+The remaining native-certain Control System Toolbox file discrepancy at this
+checkpoint was resolved in INC-MATLAB-03. The per-file comparison retains all
+differences.
 
 The Windows focused command selected the MATLAB/Simulink extractor and
 pipeline tests, watcher, language resolvers and cross-language call resolver
@@ -6139,3 +6140,25 @@ the offline lock check passed, and Pyright retained 688 baseline diagnostics
 with zero new ones. A fresh source-matched wheel passed core and MATLAB
 consumer checks, including product evidence, rejection and retry. The
 repository graph was refreshed with AST-only `graphify update .`.
+
+## INC-MATLAB-03 — State-space constructor attribution
+
+| Criterion | Verification for the R2026b source profile |
+| --- | --- |
+| REQ-MATLAB-003-AC05 | `test_matlab_control_signature.py::test_req_matlab003_ac05_records_exact_matrix_constructor_sites` verifies numeric and zero-matrix sites, same-line identity, and LF/CRLF continuation provenance. Replaying the previous resolver produced zero positive witnesses. The previous parser rejected the continued CRLF fixture. |
+| REQ-MATLAB-003-AC05 | `test_req_matlab003_ac05_leaves_ambiguous_call_shapes_unassigned`, `test_req_matlab003_ac05_ss_shadow_prevents_vendor_attribution`, and `test_req_matlab003_ac05_zeros_shadow_preserves_independent_literal_sites` verify rejection of conversion, MPC options, nonpositional forms, and lexical and corpus overrides. |
+| REQ-MATLAB-003-AC05 | `test_req_matlab003_ac05_watcher_retracts_and_restores_cached_signature` verifies actual graph rebuilds when a local helper is added and removed. The restored witness keeps its identity and metadata. |
+
+The independent R2026b native receipt identifies Control System Toolbox for
+the unchanged reference input. The rebuilt 189-file graph adds exactly six
+source-located `ss(A,B,C,D)` witnesses and preserves every prior node and
+edge. Cold and warm exports match byte for byte. The snapshot has zero
+unmatched native-certain MATLAB file/product pairs. Shared and indirect
+differences in the native product-set comparison remain separate.
+
+The focused Windows selection used `python -m pytest` with isolated cache,
+temporary and JUnit destinations. It passed 286 cases, including all 15
+new regression cases, with six existing platform skips. Fresh offline
+core and MATLAB wheel consumers passed. The MATLAB consumer graph retained
+the exact signature metadata. This selection covers the extraction,
+watcher and cross-language boundaries of the change.

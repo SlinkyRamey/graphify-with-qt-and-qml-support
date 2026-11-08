@@ -1074,6 +1074,16 @@ reported separately.
     selected product and every observed external library reference. Where
     available, independent native dependency analysis distinguishes observed,
     fixture-only, and unresolved product evidence.
+5 - `REQ-MATLAB-003-AC05`: A bare, unshadowed `ss(A,B,C,D)` call with four
+    explicit positional matrix arguments and a numeric literal or unshadowed
+    positional `zeros` feedthrough shall yield a located, inferred Control
+    System Toolbox witness with its signature. Unknown conversion, MPC
+    option, argument expansion and shadowed forms shall remain unattributed.
+    A line continuation shall retain identical locations under LF and CRLF.
+    Cold, warm and rebuilt graphs shall preserve or retract the witness
+    according to the current sources.
 
-Status: **Implemented and verified for the declared R2026b source profile in INC-MATLAB-02.**
-See the [verification matrix](../tests/TRACEABILITY.md#inc-matlab-02--product-attribution).
+Status: **Implemented and verified for the declared R2026b source profile.**
+See the [product attribution](../tests/TRACEABILITY.md#inc-matlab-02--product-attribution)
+and [state-space attribution](../tests/TRACEABILITY.md#inc-matlab-03--state-space-constructor-attribution)
+verification records.

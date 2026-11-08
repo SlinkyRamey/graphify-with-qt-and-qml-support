@@ -52,14 +52,14 @@ def _record_calls(
         or any("load" in a.bindings or "load" in a.imports or a.wildcard_import for a in ancestors)
     ):
         return
-    load_evidence = {"matlab_assigned_load": True} if assigned_load else {}
+    call_evidence: dict[str, bool | str] = {"matlab_assigned_load": True} if assigned_load else {}
     # A declaration's full syntax is scanned before any call binds. MATLAB's
     # explicit imports apply throughout the function, including earlier lines.
     if name == head:
         imported = workspace.imports.get(name)
         if imported is not None:
             if len(imported) == 1:
-                facts.add_call(scope, next(iter(imported)), site.syntax, matlab_explicit_import=True, **load_evidence)
+                facts.add_call(scope, next(iter(imported)), site.syntax, matlab_explicit_import=True, **call_evidence)
             return
         if any(name in a.imports for a in ancestors[1:]):
             return
@@ -78,7 +78,7 @@ def _record_calls(
         if name in SIMULINK_APIS and site.model_name:
             facts.add_call(
                 scope, site.model_name, site.syntax, _matlab_model_reference=True,
-                matlab_api=name, **load_evidence,
+                matlab_api=name, **call_evidence,
             )
             return
     if name != head and any(head in ancestor.imports for ancestor in ancestors):
@@ -89,7 +89,15 @@ def _record_calls(
         bool(_same_file_candidates(scope, facts, head)) or head in facts.class_member_names
         or any(a.wildcard_import for a in ancestors)
     )
-    facts.add_call(scope, name, site.syntax, matlab_product_blocked=product_blocked, **load_evidence)
+    # A local zeros binding defeats a feedthrough witness while leaving
+    # ordinary source call resolution and literal matrix evidence intact.
+    if site.ss_feedthrough == "numeric_literal" or (
+        site.ss_feedthrough == "zeros" and "zeros" not in facts.class_member_names
+        and not _same_file_candidates(scope, facts, "zeros")
+        and not any("zeros" in a.bindings or "zeros" in a.imports for a in ancestors)
+    ):
+        call_evidence["matlab_ss_feedthrough"] = site.ss_feedthrough
+    facts.add_call(scope, name, site.syntax, matlab_product_blocked=product_blocked, **call_evidence)
 
 
 def collect_matlab_calls(facts: MatlabFacts) -> None:

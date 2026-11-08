@@ -18,10 +18,10 @@ def model_cache_salt(path: Path, root: Path) -> str | None:
         return language
     absolute = path.absolute()
     owner = absolute.relative_to(root) if absolute.is_relative_to(root) else absolute
-    # Epoch 1 retired ambiguous .m entries. Epoch 2 adds precise API witness
-    # columns and local shadow evidence, including assigned load. Unrelated
-    # languages keep their existing entries.
-    epoch = "matlab-simulink-2" if suffix == ".m" else "matlab-simulink-1"
+    # Epoch 1 retired ambiguous .m entries. Epoch 2 added API witness columns
+    # and shadow evidence. Epoch 3 records state-space constructor arguments.
+    # Simulink and other languages keep their existing entries.
+    epoch = "matlab-simulink-3" if suffix == ".m" else "matlab-simulink-1"
     return json.dumps([epoch, suffix, owner.as_posix(), language])
 
 

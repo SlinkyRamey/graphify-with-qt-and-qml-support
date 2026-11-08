@@ -12,6 +12,7 @@ from graphify.matlab_product_catalog import LIBRARY_PRODUCTS, SHARED_PRODUCT_SYM
 def append_product(
     nodes: list[dict], edges: list[dict], owner: dict, product: str, evidence: str,
     symbol: str, location: str, *, column: int | None = None, member: str | None = None,
+    signature: str | None = None,
 ) -> None:
     """Keep one node per site so either graph profile can preserve every use."""
     site = json.dumps([owner["id"], product, evidence, symbol, location, column], ensure_ascii=True)
@@ -21,6 +22,8 @@ def append_product(
     }
     if column is not None:
         details["column"] = column
+    if signature is not None:
+        details["signature"] = signature
     if member is not None:
         details["member"] = member
     if evidence == "library_block":

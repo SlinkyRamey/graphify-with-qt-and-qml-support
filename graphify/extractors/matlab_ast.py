@@ -81,7 +81,9 @@ def parse_matlab(source: bytes) -> Node:
             "MATLAB_PARSER_MISSING", "MATLAB parser not installed; install graphifyy[matlab]"
         ) from exc
     try:
-        root = get_parser("matlab").parse(source).root_node
+        # The grammar recognizes continuation before LF only. Normalizing
+        # CRLF keeps line and in-line byte columns aligned with the source.
+        root = get_parser("matlab").parse(source.replace(b"\r\n", b"\n")).root_node
     except (ImportError, LookupError, OSError, RuntimeError, ValueError) as exc:
         raise MatlabSourceError(
             "MATLAB_PARSER_LOAD", "MATLAB parser failed to load; reinstall graphifyy[matlab]"

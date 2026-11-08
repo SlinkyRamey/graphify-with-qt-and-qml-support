@@ -23,6 +23,11 @@ if TYPE_CHECKING:
 _WORKSPACE_CHANGES = {"assignin", "clear", "eval", "evalc", "evalin", "load", "run"}
 _MODEL_NAME = re.compile(r"[^\W\d_]\w*(?:\.slx)?")
 _IMPORT_NAME = re.compile(r"[^\W\d_]\w*(?:\.[^\W\d_]\w*)+(?:\.\*)?|[^\W\d_]\w*\.\*")
+_ARGUMENT_TRIVIA = {"comment", "line_continuation"}
+_MATRIX_EXPRESSIONS = {
+    "number", "identifier", "matrix", "field_expression", "function_call",
+    "unary_operator", "binary_operator", "parenthesis",
+}
 
 
 @dataclass
@@ -30,6 +35,7 @@ class CallSite:
     name: str
     syntax: Node
     model_name: str = ""
+    ss_feedthrough: str = ""
 
 
 @dataclass
@@ -98,6 +104,60 @@ def _literal_model(arg: Node | None) -> str:
     return value if _MODEL_NAME.fullmatch(value) else ""
 
 
+def _positional_arguments(args: Node | None) -> list[Node]:
+    """Named options are not positional fields in the pinned grammar."""
+    if args is None or args.has_error:
+        return []
+    positional = args.children_by_field_name("argument")
+    visible = [node for node in args.named_children if node.type not in _ARGUMENT_TRIVIA]
+    return positional if visible == positional else []
+
+
+def _expression_uses_only(node: Node, allowed: set[str]) -> bool:
+    pending = [node]
+    while pending:
+        term = pending.pop()
+        if term.type in _ARGUMENT_TRIVIA:
+            continue
+        if term.type not in allowed:
+            return False
+        pending.extend(term.named_children)
+    return True
+
+
+def _matrix_expression(node: Node) -> bool:
+    # Direct brace indexing can expand into multiple arguments. Matrix
+    # slices using parentheses remain an ordinary argument expression.
+    while node.type == "parenthesis":
+        enclosed = [child for child in node.named_children if child.type not in _ARGUMENT_TRIVIA]
+        if len(enclosed) != 1:
+            return False
+        node = enclosed[0]
+    if node.type not in _MATRIX_EXPRESSIONS:
+        return False
+    return not any(
+        term.type == "function_call" and any(child.type == "{" for child in term.children)
+        for term in (node, *node.named_children) if node.type in {"function_call", "field_expression"}
+    )
+
+
+def _ss_feedthrough(args: Node | None) -> str:
+    """Distinguish the documented four-matrix form from text-option overloads."""
+    positional = _positional_arguments(args)
+    if len(positional) != 4 or not all(_matrix_expression(node) for node in positional):
+        return ""
+    feedthrough = positional[3]
+    if _expression_uses_only(feedthrough, {"number", "matrix", "row", "unary_operator"}):
+        return "numeric_literal"
+    if feedthrough.type != "function_call" or syntax_text(feedthrough.child_by_field_name("name")) != "zeros":
+        return ""
+    sizes = _positional_arguments(next((n for n in feedthrough.named_children if n.type == "arguments"), None))
+    allowed = {"number", "identifier", "unary_operator", "binary_operator", "parenthesis"}
+    if 1 <= len(sizes) <= 2 and all(_expression_uses_only(size, allowed) for size in sizes):
+        return "zeros"
+    return ""
+
+
 def _call_site(node: Node) -> CallSite | None:
     name = syntax_text(node.child_by_field_name("name"))
     if not IDENTIFIER.fullmatch(name) or not any(child.type == "(" for child in node.children):
@@ -112,7 +172,10 @@ def _call_site(node: Node) -> CallSite | None:
     if not name or _index_only(args):
         return None
     arg = args.child_by_field_name("argument") if args is not None else None
-    return CallSite(name, node, _literal_model(arg) if name in SIMULINK_APIS else "")
+    return CallSite(
+        name, node, _literal_model(arg) if name in SIMULINK_APIS else "",
+        _ss_feedthrough(args) if name == "ss" else "",
+    )
 
 
 def _record_imports(result: Workspace, args: list[Node]) -> None:

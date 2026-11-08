@@ -47,3 +47,19 @@ Simulink Control Design, Stateflow and Symbolic Math Toolbox. Product names
 are public facts. Private corpus paths and source remain outside fixtures.
 Exit requires the public, cache, update and corpus comparisons above. Any
 native tooling limit is recorded separately.
+
+## INC-MATLAB-03 — State-space constructor attribution
+
+This increment depends on INC-MATLAB-02 and closes the native-certain
+Control System Toolbox file discrepancy found in the reference corpus.
+It extends REQ-MATLAB-003-AC05 with an exact four-positional constructor
+profile. The feedthrough must provide explicit numeric source evidence.
+Conversion forms, MPC options, name-value syntax, expanded arguments and
+project overrides remain outside this inference. Generic response method
+dispatch stays separate.
+
+Verify the matrix shape, rejection controls, lexical and corpus
+shadowing, warm cache and refresh through public entry points. Independently
+compare all six reference source locations with the unchanged native
+per-file report. Exit requires existing MATLAB/Simulink graph facts,
+package profiles and source-relationship transport to remain usable.

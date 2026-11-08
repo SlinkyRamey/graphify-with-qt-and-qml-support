@@ -63,6 +63,7 @@ class _MatlabCorpus:
         self.nodes: dict[str, dict] = {}
         self.targets: dict[tuple[Path | None, str], list[dict]] = defaultdict(list)
         self.files: set[tuple[Path | None, str]] = set()
+        self.method_names: set[str] = set()
         for node in nodes:
             meta = node.get("metadata")
             if node.get("_origin") != "ast" or not isinstance(meta, dict) or meta.get("language") != "matlab":
@@ -73,12 +74,16 @@ class _MatlabCorpus:
                 continue
             self.nodes[nid] = node
             kind = meta.get("kind")
+            if kind == "matlab_method" and isinstance(method := meta.get("matlab_name"), str):
+                self.method_names.add(method.casefold())
             if kind == "matlab_file" and IDENTIFIER.fullmatch(path.stem):
                 # A script or a file with a different primary declaration
                 # can still occupy the name used by a vendor function.
                 file_key = _lookup_key(path, "matlab_class", path.stem, self.root)
                 if file_key is not None:
                     self.files.add((file_key[0], file_key[1].casefold()))
+                if path.parent.name.startswith("@"):
+                    self.method_names.add(path.stem.casefold())
             if kind not in {"matlab_class", "matlab_function"} or meta.get("matlab_primary") is not True:
                 continue
             name = meta.get("matlab_name")
@@ -108,6 +113,17 @@ class _MatlabCorpus:
         return (path.parent, parts[0]) in self.files or any(
             (None, ".".join(parts[:length])) in self.files for length in range(1, len(parts) + 1)
         )
+
+    def ss_signature(self, caller: dict, feedthrough: object) -> str | None:
+        """An admitted object method or helper override defeats this shape inference."""
+        if "ss" in self.method_names:
+            return None
+        if feedthrough == "numeric_literal" or (
+            feedthrough == "zeros" and "zeros" not in self.method_names
+            and not self.shadows_product(caller, "zeros")
+        ):
+            return "ss(A,B,C,D)"
+        return None
 
 
 def _edge(caller: dict, target: dict, relation: str, location: str, context: str) -> dict:
@@ -185,10 +201,12 @@ def _record_api_product(corpus: _MatlabCorpus, caller: dict, raw: dict,
     column = raw.get("matlab_column")
     if not isinstance(symbol, str) or type(column) is not int or column < 1:
         return
-    product = API_PRODUCTS.get(symbol)
+    signature = corpus.ss_signature(caller, raw.get("matlab_ss_feedthrough")) if symbol == "ss" else None
+    product = "Control System Toolbox" if signature else API_PRODUCTS.get(symbol)
     if product is None or raw.get("matlab_product_blocked") or corpus.shadows_product(caller, symbol):
         return
     if raw.get("matlab_assigned_load") and corpus.shadows_product(caller, "load"):
         return
     evidence = "import" if raw.get("matlab_import") is True else "api"
-    append_product(nodes, edges, caller, product, evidence, symbol, raw["source_location"], column=column)
+    append_product(nodes, edges, caller, product, evidence, symbol, raw["source_location"],
+                   column=column, signature=signature)

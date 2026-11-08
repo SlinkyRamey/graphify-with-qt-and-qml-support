@@ -111,6 +111,28 @@ documents limits around shared libraries and missing toolboxes.
 [Per-file dependency analysis](https://www.mathworks.com/help/simulink/slref/dependencies.toolboxdependencyanalysis.html) ·
 [MATLAB file and product analysis](https://www.mathworks.com/help/matlab/ref/matlab.codetools.requiredfilesandproducts.html)
 
+### Four-matrix state-space calls
+
+The bare `ss` name remains outside the name-only catalog. A separate
+signature witness recognizes four explicit positional matrix expressions
+with a literal numeric feedthrough or a direct `zeros` call with one or
+two positional dimensions. Text options, cell expansion, and ambiguous
+feedthrough variables provide no signature witness. The numeric
+feedthrough distinguishes the constructor from the four-argument MPC
+conversion form, whose preview options are text.
+[Control System Toolbox constructor](https://www.mathworks.com/help/control/ref/ss.html) ·
+[MPC conversion overload](https://www.mathworks.com/help/mpc/ref/mpc.ss.html)
+
+Lexical bindings and admitted project candidates can override the name.
+An admitted classdef or class-folder method named `ss` also vetoes the
+inference. The same checks apply to `zeros` when it supplies the numeric
+witness. Graphify records the signature and source location as inferred
+evidence. It does not infer argument runtime types or attribute generic
+methods such as `bode` and `pole` by spelling. The MATLAB-only cache epoch
+advances to 3 because old call facts lack constructor evidence. The parser
+normalizes CRLF before parsing so a continued matrix call has the same
+physical line and byte column in either saved newline style.
+
 ## Shared seams
 
 The extractor facade retains dispatch, aggregation and source-tier stamping.

@@ -30,3 +30,8 @@ or errors. The original saved reference remains available when present.
 No catalog download, license, tool installation, or native analysis is
 needed at runtime. Malformed input and write failures follow the existing
 diagnostics and retention policy above.
+
+Unproved `ss` signatures abstain from product attribution without changing
+ordinary MATLAB call facts. LF and CRLF continuations use the same syntax
+admission and source locations. Genuinely malformed continuations retain
+the existing `MATLAB_SYNTAX` rejection.
