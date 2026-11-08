@@ -53,7 +53,7 @@ def profile(tmp_path, monkeypatch):
             state.wheel.write_bytes(b"public subprocess-boundary wheel fixture")
         is_addon = arguments[-1] == str(state.wheel) + "[terraform]"
         is_smoke = "-I" in arguments
-        mode = "core" if "--core-only" in arguments else "qml"
+        mode = "matlab" if "-c" in arguments else ("core" if "--core-only" in arguments else "qml")
         if (state.failure == "addon" and is_addon) or (state.failure == mode and is_smoke):
             raise subprocess.CalledProcessError(1, arguments)
         return subprocess.CompletedProcess(arguments, 0)
@@ -83,6 +83,13 @@ def addon(profile):
             str(profile.wheel) + "[terraform]"]
 
 
+def matlab_probe(profile):
+    """The native interpreter must load the exact grammar before source validation."""
+    return [qml_ci.interpreter(profile.extra), "-I", "-c",
+            "from tree_sitter_language_pack import get_language\n"
+            "assert get_language('matlab').name == 'matlab'"]
+
+
 def pytest_command(profile, selected):
     return [qml_ci.interpreter(profile.extra), "-X", "utf8", "-m", "pytest",
             *selected, "-q", "-ra", "--tb=short"]
@@ -102,8 +109,9 @@ def test_req_core004_ac02_native_profile_adds_terraform_after_clean_wheel_smokes
     selected = [str(Path("tests") / name) for name in
                 ("test_qml_public.py", "test_qt_public.py", "test_upstream_qt_public.py")]
     assert [call.arguments for call in profile.calls] == [
-        *clean_prefix(profile), addon(profile), pytest_command(profile, selected)]
+        *clean_prefix(profile), matlab_probe(profile), addon(profile), pytest_command(profile, selected)]
     assert_neutral_smokes(profile)
+    assert profile.calls[7].cwd == profile.calls[6].cwd and profile.calls[7].cwd_exists
     assert profile.calls[-1].cwd == profile.root
     assert profile.calls[-1].wheel_environment == str(profile.wheel)
     assert profile.calls[-1].utf8 == "1"
@@ -129,7 +137,8 @@ def test_req_qml022_ac06_native_profile_collects_shared_cpp_csharp_ownership(pro
     selected = profile.calls[-1].arguments
     assert all(str(Path("tests") / name) in selected for name in names)
     assert str(Path("tests") / "test_unrelated.py") not in selected
-    assert [call.arguments for call in profile.calls[:-1]] == [*clean_prefix(profile), addon(profile)]
+    assert [call.arguments for call in profile.calls[:-1]] == [
+        *clean_prefix(profile), matlab_probe(profile), addon(profile)]
     assert_neutral_smokes(profile)
 
 
@@ -145,7 +154,8 @@ def test_req_qml018_ac06_native_profile_collects_upstream100_joint_and_generic_c
     selected = profile.calls[-1].arguments
     assert all(str(Path("tests") / name) in selected for name in names)
     assert str(Path("tests") / "test_unrelated.py") not in selected
-    assert [call.arguments for call in profile.calls[:-1]] == [*clean_prefix(profile), addon(profile)]
+    assert [call.arguments for call in profile.calls[:-1]] == [
+        *clean_prefix(profile), matlab_probe(profile), addon(profile)]
     assert_neutral_smokes(profile)
 
 
@@ -154,7 +164,17 @@ def test_req_core004_ac03_failed_addon_stops_before_native_pytest(profile):
     profile.failure = "addon"
     with pytest.raises(subprocess.CalledProcessError):
         qml_ci.main()
-    assert [call.arguments for call in profile.calls] == [*clean_prefix(profile), addon(profile)]
+    assert [call.arguments for call in profile.calls] == [
+        *clean_prefix(profile), matlab_probe(profile), addon(profile)]
+    assert_neutral_smokes(profile)
+
+
+def test_req_matlab003_ac06_missing_native_grammar_stops_before_source_tests(profile):
+    """A failed grammar probe cannot pass by collecting skipped source tests."""
+    profile.failure = "matlab"
+    with pytest.raises(subprocess.CalledProcessError):
+        qml_ci.main()
+    assert [call.arguments for call in profile.calls] == [*clean_prefix(profile), matlab_probe(profile)]
     assert_neutral_smokes(profile)
 
 

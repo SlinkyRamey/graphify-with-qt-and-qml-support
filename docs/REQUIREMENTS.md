@@ -1082,8 +1082,15 @@ reported separately.
     A line continuation shall retain identical locations under LF and CRLF.
     Cold, warm and rebuilt graphs shall preserve or retract the witness
     according to the current sources.
+6 - `REQ-MATLAB-003-AC06`: Hosted source validation shall exercise the
+    dedicated MATLAB and Simulink tests on Linux, Windows and macOS. Native
+    Windows and macOS wheel lanes shall verify grammar availability before
+    running those tests. The core and Linux artifact-only profiles shall
+    retain their existing dependency and test boundaries.
 
-Status: **Implemented and verified for the declared R2026b source profile.**
+Status: **Implemented and locally verified for the declared R2026b source profile.**
 See the [product attribution](../tests/TRACEABILITY.md#inc-matlab-02--product-attribution)
 and [state-space attribution](../tests/TRACEABILITY.md#inc-matlab-03--state-space-constructor-attribution)
 verification records.
+The [hosted source matrix](matlab/PLAN.md#inc-matlab-04--hosted-source-validation)
+requires evidence from the reviewed pull request revision.

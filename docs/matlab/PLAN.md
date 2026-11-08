@@ -63,3 +63,13 @@ shadowing, warm cache and refresh through public entry points. Independently
 compare all six reference source locations with the unchanged native
 per-file report. Exit requires existing MATLAB/Simulink graph facts,
 package profiles and source-relationship transport to remain usable.
+
+## INC-MATLAB-04 — Hosted source validation
+
+Linux retains the full all-extras suite. Windows and macOS use the native
+source phase of the existing optional-wheel matrix. That phase verifies
+the MATLAB grammar provided by the pinned language pack already installed
+with the QML extra, then admits the dedicated MATLAB and Simulink files.
+The clean core, clean QML and Linux artifact-only checks stay separate.
+REQ-MATLAB-003-AC06 requires actual per-case evidence for each hosted
+source lane, with any missing or skipped execution reported separately.

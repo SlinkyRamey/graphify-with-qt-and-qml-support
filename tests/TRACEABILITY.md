@@ -6162,3 +6162,17 @@ new regression cases, with six existing platform skips. Fresh offline
 core and MATLAB wheel consumers passed. The MATLAB consumer graph retained
 the exact signature metadata. This selection covers the extraction,
 watcher and cross-language boundaries of the change.
+
+## INC-MATLAB-04 — Hosted source validation
+
+| Criterion | Source and workflow evidence |
+| --- | --- |
+| REQ-MATLAB-003-AC06 | `test_qml_platform_matrix.py::test_wheel_runner_keeps_optional_core_and_isolated_offline_smoke_boundaries` reproduces the omission of MATLAB and Simulink files in the native selector and verifies the corrected inventory and unchanged artifact-only selection. |
+| REQ-MATLAB-003-AC06 | `test_qml_ci_profiles.py::test_req_matlab003_ac06_missing_native_grammar_stops_before_source_tests` verifies the actual runner's grammar rejection boundary. The native, clean-smoke and artifact-only profile tests verify command ordering and interpreter identity. |
+
+The local Windows selection ran the three wheel policy/inventory modules
+and eight dedicated MATLAB/Simulink modules with isolated pytest output.
+All 94 cases passed, including 81 MATLAB/Simulink cases, with zero skips.
+The installed pinned parser loaded the MATLAB grammar. Hosted acceptance
+requires JUnit case readback from the reviewed revision's Linux full-suite
+lanes and Windows/macOS native wheel lanes.
