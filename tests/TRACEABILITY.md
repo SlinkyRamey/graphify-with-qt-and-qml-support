@@ -6073,3 +6073,118 @@ validators pass. Whole Ruff passes; qualified Pyright retains exactly688
 diagnostic identities, no additions or retirements relative to `da4ab45f`, with
 the previously established raw-parent classification retained. Full source,
 fresh package/consumers, native PR and resulting-v8 gates remain separate.
+
+
+## INC-MATLAB-01 — Saved MATLAB and Simulink structure
+
+The [requirements](../docs/REQUIREMENTS.md#matlab-and-simulink) and
+[design](../docs/matlab/DESIGN.md) describe the offline source profile.
+
+| Criterion | Source and pipeline evidence |
+| --- | --- |
+| REQ-MATLAB-001-AC01 | `test_extract.py::test_get_extractor_routes_matlab_m_away_from_objc`, `test_matlab_m_routes_to_source_extractor`, existing `test_language_overrides.py`, and `test_matlab_source_extractor.py::test_matlab_parser_missing_does_not_invent_declarations` |
+| REQ-MATLAB-001-AC02 | `test_matlab_source_extractor.py` and `test_matlab_source_boundaries.py` cover class members, lexical ownership, separate identities, encoding, shadowing, indexing and file-scope binding |
+| REQ-MATLAB-001-AC03 | `test_simulink_extract.py::test_req_matlab001_ac03_ac04_split_signals_and_subsystem_mapping`, `test_req_matlab001_ac03_flat_library_references` and `test_simulink_stateflow.py` |
+| REQ-MATLAB-001-AC04 | Split signal and local SID tests in `test_simulink_extract.py`; the CLI direction test also reads back normal and typed-storage graphs |
+| REQ-MATLAB-002-AC01 | `test_matlab_simulink_pipeline.py::test_req_matlab_002_ac01_ac02_cli_persists_exact_saved_direction_and_dependencies`, `test_workspace_file_link_requires_matlab_source_type`, and the MATLAB corpus/private/package and model API witness tests |
+| REQ-MATLAB-002-AC02 | `test_matlab_simulink_pipeline.py::test_req_matlab_002_ac02_incremental_target_add_ambiguity_and_remove`, `test_languages.py::test_matlab_file_ownership_survives_warm_cache_and_mixed_language`, and the model move/rename test |
+| REQ-MATLAB-002-AC03 | `test_matlab_simulink_pipeline.py::test_req_matlab_002_ac03_corrupt_archive_retains_accepted_products_and_retries` exercises actual CLI extract and update rejection and retry; malformed, cyclic and over-limit package fixtures cover reader admission |
+
+Local verification uses Windows, the pinned optional grammar, independent
+archive comparisons and a fresh installed core/MATLAB profile. The private
+reference corpus stays outside the test fixtures. Its saved model, block,
+signal, dependency and supported Stateflow records were compared against
+the exported graph, and cold and warm output bytes agreed. Runtime model
+validation and active variant evaluation are separate. Hosted platform
+verification remains open.
+
+The aligned Windows run used `python -m pytest tests -q --tb=short -rs` with
+isolated scratch, cache and JUnit destinations. It completed with 16,089
+passes, 220 skips and one expected failure. All six parallel Terraform cache
+cases passed after the test process and workers used the same installed package
+version. The focused suite and installed profiles exercised the ordinary CLI,
+direct API, warm caches, persisted direction, failed refresh retention and
+successful retry. The final wheel matched its source and both clean profiles
+installed from locked dependencies offline. Ruff, the lock check, generated
+artifact validation and an AST-only repository graph update passed. The type
+check retained the baseline's 688 diagnostics with zero new diagnostics.
+
+## INC-MATLAB-02 — Product attribution
+
+| Criterion | Verification for the R2026b source profile |
+| --- | --- |
+| REQ-MATLAB-003-AC01 | `test_matlab_product_attribution.py::test_req_matlab003_ac01_product_matrix_includes_all_selected_families` verifies all 12 products through the extraction facade. `test_req_matlab003_ac03_cli_cold_warm_and_reload_keep_distinct_source_sites` verifies exact same-line call sites and literal saved paths through both JSON graph profiles. |
+| REQ-MATLAB-003-AC02 | `test_req_matlab003_ac02_stateflow_product_requires_a_saved_stateflow_chart`, `test_req_matlab003_ac02_simulink_reference_matching_is_exact_and_offline`, and `test_req_matlab003_ac02_lexical_guards_and_corpus_names_win` in `test_matlab_product_attribution.py` cover block, library and syntax boundaries. `test_matlab_assigned_load.py::test_req_matlab003_ac02_assigned_load_preserves_only_proved_product_sites` reproduces the native-audit miss and covers the no-output, workspace mutation and shadow cases. |
+| REQ-MATLAB-003-AC03 | The CLI cold/warm test above, `test_req_matlab003_ac03_watcher_retracts_and_restores_evidence_for_project_shadows` and `test_req_matlab003_ac03_corrupt_model_retains_attribution_and_accepts_repair` verify update, retraction, rejection and recovery against actual graph products. |
+| REQ-MATLAB-003-AC04 | An independent saved-archive read and isolated R2026b per-file dependency analyses compared all 189 reference inputs. Graphify retained 995 located witnesses, including all 136 external library occurrences across 11 exact paths and seven verified Stateflow charts. Cold/warm graph bytes agreed. Private source and native reports stay in local evidence. |
+
+The reference corpus exercised nine products. Simulink Control Design,
+Symbolic Math Toolbox and Model Predictive Control Toolbox were verified by
+synthetic cases, with no corresponding source witnesses or native dependency
+reports in this snapshot. The 47 Simulink 3D Animation witnesses are shared
+associations. MathWorks reported Aerospace Blockset in the aggregate and
+multiple possible 3D product owners in its MATLAB scan. The graph records
+the documented association to Simulink 3D Animation with shared ownership.
+The two direct Parallel Computing misses from assigned `load` were corrected.
+The remaining native-certain Control System Toolbox file discrepancy at this
+checkpoint was resolved in INC-MATLAB-03. The per-file comparison retains all
+differences.
+
+The Windows focused command selected the MATLAB/Simulink extractor and
+pipeline tests, watcher, language resolvers and cross-language call resolver
+tests with isolated pytest output. It passed 271 cases with six existing
+platform skips. A broader parallel attempt encountered memory exhaustion.
+The three modules with recorded failures passed all 112 cases on isolated
+retry. Full-suite completion for this increment remains open. Ruff and
+the offline lock check passed, and Pyright retained 688 baseline diagnostics
+with zero new ones. A fresh source-matched wheel passed core and MATLAB
+consumer checks, including product evidence, rejection and retry. The
+repository graph was refreshed with AST-only `graphify update .`.
+
+## INC-MATLAB-03 — State-space constructor attribution
+
+| Criterion | Verification for the R2026b source profile |
+| --- | --- |
+| REQ-MATLAB-003-AC05 | `test_matlab_control_signature.py::test_req_matlab003_ac05_records_exact_matrix_constructor_sites` verifies numeric and zero-matrix sites, same-line identity, and LF/CRLF continuation provenance. Replaying the previous resolver produced zero positive witnesses. The previous parser rejected the continued CRLF fixture. |
+| REQ-MATLAB-003-AC05 | `test_req_matlab003_ac05_leaves_ambiguous_call_shapes_unassigned`, `test_req_matlab003_ac05_ss_shadow_prevents_vendor_attribution`, and `test_req_matlab003_ac05_zeros_shadow_preserves_independent_literal_sites` verify rejection of conversion, MPC options, nonpositional forms, and lexical and corpus overrides. |
+| REQ-MATLAB-003-AC05 | `test_req_matlab003_ac05_watcher_retracts_and_restores_cached_signature` verifies actual graph rebuilds when a local helper is added and removed. The restored witness keeps its identity and metadata. |
+
+The independent R2026b native receipt identifies Control System Toolbox for
+the unchanged reference input. The rebuilt 189-file graph adds exactly six
+source-located `ss(A,B,C,D)` witnesses and preserves every prior node and
+edge. Cold and warm exports match byte for byte. The snapshot has zero
+unmatched native-certain MATLAB file/product pairs. Shared and indirect
+differences in the native product-set comparison remain separate.
+
+The focused Windows selection used `python -m pytest` with isolated cache,
+temporary and JUnit destinations. It passed 286 cases, including all 15
+new regression cases, with six existing platform skips. Fresh offline
+core and MATLAB wheel consumers passed. The MATLAB consumer graph retained
+the exact signature metadata. This selection covers the extraction,
+watcher and cross-language boundaries of the change.
+
+## INC-MATLAB-04 — Hosted source validation
+
+| Criterion | Source and workflow evidence |
+| --- | --- |
+| REQ-MATLAB-003-AC06 | `test_qml_platform_matrix.py::test_wheel_runner_keeps_optional_core_and_isolated_offline_smoke_boundaries` reproduces the omission of MATLAB and Simulink files in the native selector and verifies the corrected inventory and unchanged artifact-only selection. |
+| REQ-MATLAB-003-AC06 | `test_qml_ci_profiles.py::test_req_matlab003_ac06_missing_native_grammar_stops_before_source_tests` verifies the actual runner's grammar rejection boundary. The native, clean-smoke and artifact-only profile tests verify command ordering and interpreter identity. |
+
+The local Windows selection ran the three wheel policy/inventory modules
+and eight dedicated MATLAB/Simulink modules with isolated pytest output.
+All 94 cases passed, including 81 MATLAB/Simulink cases, with zero skips.
+The installed pinned parser loaded the MATLAB grammar. Hosted acceptance
+requires JUnit case readback from the reviewed revision's Linux full-suite
+lanes and Windows/macOS native wheel lanes.
+
+The first hosted Linux suite to finish reproduced a product witness
+compatibility gap in `test_extract.py::test_matlab_m_routes_to_source_extractor`.
+The old assertion expected exactly the source file and function kinds, and
+the new witness lacked its own kind. The same `KeyError` reproduced locally
+before correction. The revised check still asserts both declaration kinds
+and their ownership, and additionally requires a distinct
+`matlab_product` witness linked to the source file. The product consumer
+checks also verify that its kind survives graph publication.
+The corrected local selection passed all 97 cases with zero skips,
+including the original routing check, its adjacent dispatch/ownership
+checks, and the dedicated model and wheel-profile suites.

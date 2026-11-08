@@ -49,6 +49,9 @@ CODE_EXTENSIONS = {'.py', '.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', 
 DOC_EXTENSIONS = {'.md', '.mdx', '.qmd', '.skill', '.txt', '.rst', '.html', '.j2', '.jinja', '.jinja2'}
 # Qt metadata is source input for bounded deterministic readers, not semantic prose.
 CODE_EXTENSIONS.update({'.qml', '.qmltypes', '.cmake', '.pro', '.pri', '.qrc'})
+# Simulink is structural source, but its ZIP bytes are never text input.
+_BINARY_SOURCE_EXTENSIONS = {'.slx'}
+CODE_EXTENSIONS.update(_BINARY_SOURCE_EXTENSIONS)
 PAPER_EXTENSIONS = {'.pdf'}
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'}
 OFFICE_EXTENSIONS = {'.docx', '.xlsx'}
@@ -936,7 +939,7 @@ def convert_office_file(path: Path, out_dir: Path, root: "Path | None" = None) -
 def count_words(path: Path) -> int:
     try:
         ext = path.suffix.lower()
-        if ext in _BINARY_MEDIA_EXTENSIONS:
+        if ext in _BINARY_MEDIA_EXTENSIONS or ext in _BINARY_SOURCE_EXTENSIONS:
             return 0
         if ext == ".pdf":
             return len(extract_pdf_text(path).split())
@@ -2386,7 +2389,7 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
                 continue
             files[ftype].append(str(p))
             # Bypass legacy cached counts derived from binary media bytes.
-            if p.suffix.lower() not in _BINARY_MEDIA_EXTENSIONS:
+            if p.suffix.lower() not in _BINARY_MEDIA_EXTENSIONS | _BINARY_SOURCE_EXTENSIONS:
                 total_words += _wc(p)
 
     for ftype in files:

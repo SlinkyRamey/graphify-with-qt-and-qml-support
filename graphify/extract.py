@@ -27,6 +27,7 @@ from .resolver_registry import (
     register as register_language_resolver,
     run_language_resolvers,
 )
+from .matlab_pipeline import extract_model_facts, model_cache_salt, partition_model_results, without_model_context
 from .ruby_resolution import resolve_ruby_member_calls
 from .csharp_dispatch import resolve_csharp_interface_dispatch
 from .swift_dispatch import resolve_swift_protocol_dispatch
@@ -36,7 +37,7 @@ from .markdown_resolution import MARKDOWN_MENTION_SUFFIXES, resolve_markdown_men
 # --- migrated to graphify/extractors/ (see graphify/extractors/MIGRATION.md) ---
 from graphify.rcfile import (
     activate_language_overrides,
-    cache_salt,
+    cache_salt as cache_salt,
     effective_suffix,
     get_language_overrides,
     set_language_overrides,
@@ -77,6 +78,8 @@ from graphify.extractors.ocaml import extract_ocaml  # noqa: F401
 from graphify.extractors.pascal_forms import extract_delphi_form, extract_lazarus_form  # noqa: F401
 from graphify.extractors.powershell import extract_powershell, extract_powershell_manifest  # noqa: F401
 from graphify.extractors.r import extract_r, resolve_r_sourced_calls  # noqa: F401
+from graphify.extractors.matlab import extract_matlab
+from graphify.extractors.simulink import extract_simulink
 from graphify.extractors.qml import extract_qml  # noqa: F401
 from graphify.extractors.qml_metadata import extract_qmldir  # noqa: F401
 from graphify.extractors.qml_cmake import extract_cmake  # noqa: F401
@@ -240,7 +243,8 @@ def _safe_extract(
         # Root-aware Qt collectors share the same post-extraction secret
         # redaction boundary as generic extractors before cache publication.
         if extractor in (extract_python, extract_qml, extract_qmldir,
-                         extract_cmake, extract_qmake, extract_qrc, extract_qmltypes):
+                         extract_cmake, extract_qmake, extract_qrc, extract_qmltypes,
+                         extract_matlab, extract_simulink):
             return _redact_rationale_labels(extractor(path, root=scan_root))
         if extractor is extract_cpp and qt_test_context is not None:
             return _redact_rationale_labels(extractor(path, qt_test_context=qt_test_context))
@@ -9282,6 +9286,7 @@ _DISPATCH: dict[str, Any] = {
     ".hrl": extract_erlang,
     ".escript": extract_erlang,
     ".m": extract_objc,
+    ".slx": extract_simulink,
     ".mm": extract_objc,
     ".jl": extract_julia,
     ".f": extract_fortran,
@@ -9357,6 +9362,7 @@ _DISPATCH: dict[str, Any] = {
 # extract() to tell the user which extra restores the language.
 _EXTRA_FOR_EXTENSION = {
     ".qml": "qml",
+    ".m": "matlab",
     ".vb": "vbnet",
     ".r": "r",
     ".sol": "solidity",
@@ -9443,17 +9449,38 @@ def _is_objc_header(path: Path) -> bool:
 
 
 def _is_objc_source(path: Path) -> bool:
-    """Whether a `.m` file is Objective-C rather than MATLAB/Octave (#1702).
+    """Identify visible Objective-C directives in a bounded shared-suffix prefix."""
+    try:
+        if not path.is_file():
+            return False
+        with path.open("rb") as stream:
+            head = stream.read(256 * 1024).removeprefix(b"\xef\xbb\xbf")
+    except OSError:
+        return False
+    # MATLAB block comments can contain whole Objective-C examples. Markers
+    # embedded in either language's comments or a quoted line are inert.
+    in_matlab_comment = False
+    in_c_comment = False
+    for line in head.splitlines():
+        token = line.strip()
+        if in_matlab_comment:
+            in_matlab_comment = token != b"%}"
+            continue
+        if token == b"%{" and not in_c_comment:
+            in_matlab_comment = True
+            continue
+        while in_c_comment or token.startswith(b"/*"):
+            _, end, token = token.partition(b"*/")
+            in_c_comment = not end
+            if in_c_comment:
+                break
+            token = token.lstrip()
+        if not in_c_comment and _OBJC_IMPL_START.match(token):
+            return True
+    return False
 
-    `.m` is shared by Objective-C implementation files and MATLAB (also Octave).
-    The suffix map routes `.m` to extract_objc unconditionally, which force-parses
-    MATLAB through the Objective-C tree-sitter grammar and emits garbage nodes/edges
-    (worse than skipping). A genuine ObjC `.m` always carries an ObjC directive
-    (@implementation/@interface/@import/#import); MATLAB has none of them. Reuses
-    the same marker set as the `.h` sniff. `.mm` is unambiguously Objective-C++ and
-    is not sniffed.
-    """
-    return _is_objc_header(path)
+
+_OBJC_IMPL_START = re.compile(rb"(?:@(?:interface|protocol|implementation|import)\b|#[ \t]*import\b)")
 
 
 def _is_cpp_header(path: Path) -> bool:
@@ -9507,13 +9534,10 @@ def _get_extractor(path: Path) -> Any | None:
         # grammar has no class_specifier). Reroute to extract_cpp (#1547).
         if _is_cpp_header(path):
             return extract_cpp
-    # `.m` is Objective-C OR MATLAB. extract_objc unconditionally would force-parse
-    # MATLAB through the ObjC grammar into garbage (#1702). Route to extract_objc
-    # only when the file actually looks like Objective-C; otherwise leave it without
-    # an extractor (surfaced by the no-AST-extractor warning, #1689) rather than
-    # mis-parsed. `.mm` is unambiguously Objective-C++ and stays on extract_objc.
+    # Preserve explicit remaps and the existing ObjC content branch (#1702).
+    # The MATLAB grammar still has to recognize the remaining input as source.
     if suffix == ".m" and not _is_objc_source(path):
-        return None
+        return extract_matlab
     # Extensionless files: resolve by shebang, mirroring detect.classify_file.
     # Without this, detect labels e.g. `#!/usr/bin/env bash` CLIs as code but
     # extraction returns no extractor and the file silently contributes nothing.
@@ -9579,7 +9603,7 @@ def _extract_single_file(args: tuple) -> tuple[int, dict]:
 
     # Check cache first (avoid re-extraction)
     if not bypass_cache:
-        cached = load_cached(path, root, cache_root=cache_location, salt=cache_salt(path))
+        cached = load_cached(path, root, cache_root=cache_location, salt=model_cache_salt(path, root))
         if cached is not None:
             return idx, cached
 
@@ -9596,7 +9620,7 @@ def _extract_single_file(args: tuple) -> tuple[int, dict]:
     # An intentional decline or virtual workspace root (result.get("skipped"))
     # is cached so repeat runs do not re-extract and re-report it (#3910).
     if not bypass_cache and "error" not in result and (result.get("nodes") or result.get("skipped")):
-        save_cached(path, result, root, cache_root=cache_location, salt=cache_salt(path))
+        save_cached(path, result, root, cache_root=cache_location, salt=model_cache_salt(path, root))
     return idx, result
 
 
@@ -9825,7 +9849,7 @@ def _extract_sequential(
         # See _extract_single_file: don't cache an anomalous zero-node result (#1666),
         # but cache intentional declines/virtual manifests carrying `skipped` (#3910).
         if not bypass_cache and "error" not in result and (result.get("nodes") or result.get("skipped")):
-            save_cached(path, result, root, cache_root=cache_location, salt=cache_salt(path))
+            save_cached(path, result, root, cache_root=cache_location, salt=model_cache_salt(path, root))
         per_file[idx] = result
     if total_files >= _PROGRESS_INTERVAL:
         # Consistent denominator with the intermediate lines (#1693).
@@ -9887,6 +9911,9 @@ def extract(
             resolution_context_nodes: they widen the resolvers' view but only
             fresh results are appended to the returned nodes/edges.
     """
+    resolution_context_nodes, resolution_context_edges = without_model_context(
+        resolution_context_nodes, resolution_context_edges,
+    )
     if resolution_context_nodes:
         # Persisted C# method labels carry their owner (#4883); the resolvers
         # match the bare `.Name()` form a fresh extraction produces.
@@ -10016,7 +10043,7 @@ def extract(
         bypass_cache = (effective_suffix(path) in _JS_CACHE_BYPASS_SUFFIXES
                         or qt_syntax_cache_bypass(path, native=native_cache_bypass))
         if not bypass_cache:
-            cached = load_cached(path, root, cache_root=cache_location, salt=cache_salt(path))
+            cached = load_cached(path, root, cache_root=cache_location, salt=model_cache_salt(path, root))
             if cached is not None:
                 per_file[i] = cached
                 cache_hits += 1
@@ -10314,6 +10341,9 @@ def extract(
             f"no symbols for: {_shown_sl}{_more_sl}",
             file=sys.stderr, flush=True,
         )
+
+    # Resolve saved model facts outside the generic callable/type indexes.
+    model_results, per_file = partition_model_results(per_file)
 
     for path, result in zip(paths, per_file):
         if path.suffix in (".tf", ".tfvars", ".hcl"):
@@ -11816,6 +11846,10 @@ def extract(
     # marker so edge eviction can be tier-scoped: re-extracting a source
     # replaces its AST edges without evicting the semantic edges the AST
     # pass cannot regenerate (#1865).
+    if model_results:
+        model_nodes, model_edges = extract_model_facts(model_results, root)
+        all_nodes.extend(model_nodes)
+        all_edges.extend(model_edges)
     for n in all_nodes:
         n["_origin"] = "ast"
     for e in all_edges:

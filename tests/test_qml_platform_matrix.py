@@ -45,6 +45,7 @@ def test_wheel_runner_keeps_optional_core_and_isolated_offline_smoke_boundaries(
     corpus = tmp_path / "tests"
     corpus.mkdir()
     selected = ["test_qml_wheel_artifact.py", "test_qml_contract.py",
+                "test_matlab_control_signature.py", "test_simulink_extract.py",
                 "test_qt_contract.py", "test_upstream_qt_contract.py",
                 "test_upstream_100_publication.py", "test_upstream_100_extraction.py",
                 "test_upstream_100_jvm_updates.py", "test_4874_jvm_resolution.py",
@@ -70,7 +71,14 @@ def test_wheel_runner_keeps_optional_core_and_isolated_offline_smoke_boundaries(
     # same owner; its separate collection guard checks every parametrized ID.
     assert sum(map(len, EXPECTED.values())) == 107
     reviewed = {module.replace(".", "/") + ".py" for module in EXPECTED}
-    assert reviewed <= {Path(path).as_posix() for path in selected_tests(ROOT)}
+    model_tests = {
+        "test_matlab_assigned_load.py", "test_matlab_control_signature.py",
+        "test_matlab_product_attribution.py", "test_matlab_simulink_pipeline.py",
+        "test_matlab_source_boundaries.py", "test_matlab_source_extractor.py",
+        "test_simulink_extract.py", "test_simulink_stateflow.py",
+    }
+    native = {Path(path).as_posix() for path in selected_tests(ROOT)}
+    assert reviewed | {f"tests/{name}" for name in model_tests} <= native
     assert '"socket.connect"' in smoke and '"subprocess.Popen"' in smoke
     assert "sys.addaudithook(offline_guard)" in smoke
     assert "QML_PARSER_MISSING" in smoke

@@ -994,3 +994,104 @@ prior local module are eligible. Known QRC additions do not describe the complet
 variable expansion. Inherited variable contents,
 general CMake evaluation, RCC options, arbitrary mutation and external discovery
 remain outside this profile. Existing integrity and persistence criteria apply.
+
+
+## MATLAB and Simulink
+
+### REQ-MATLAB-001 — Extract saved MATLAB and Simulink structure
+
+Graphify shall discover and analyze admitted MATLAB source and Simulink model
+archives using the ordinary code extraction interface. Facts shall identify the
+owning source and declaration or saved model element.
+
+**Acceptance Criteria**
+
+1 - `REQ-MATLAB-001-AC01`: MATLAB `.m` reaches the MATLAB syntax reader.
+    Objective-C `.m`, Objective-C++ `.mm` and explicit language remaps retain
+    their established routing. Unrecognized input produces no invented MATLAB
+    declarations. A missing optional parser has an actionable diagnostic.
+2 - `REQ-MATLAB-001-AC02`: Scripts, functions, nested and local functions,
+    classes, methods and supported class members have distinct source-located
+    identities and ownership. Comments, literals and ambiguous indexing do not
+    create declarations or resolved call edges.
+3 - `REQ-MATLAB-001-AC03`: An admitted `.slx` model or library contributes its
+    saved subsystem hierarchy, blocks and ports. The reader handles the supported
+    XML and JSON header layouts without opening a model in Simulink.
+4 - `REQ-MATLAB-001-AC04`: A saved signal records source and destination ports,
+    including each supported branch destination. The source location identifies
+    the contributing archive member. Missing endpoints remain unresolved.
+
+Status: **Implemented in INC-MATLAB-01.** See the [verification matrix](../tests/TRACEABILITY.md#inc-matlab-01--saved-matlab-and-simulink-structure).
+
+### REQ-MATLAB-002 — Resolve dependencies and retain valid graph products
+
+Graphify shall retain evidence for literal model and code references, connect
+only supported unambiguous targets within the admitted corpus, and preserve
+valid graph output on a failed refresh.
+
+**Acceptance Criteria**
+
+1 - `REQ-MATLAB-002-AC01`: Literal model, library and supported MATLAB references
+    link to their eligible source-owned targets. Absent or ambiguous targets
+    remain unresolved, and other languages and excluded files cannot supply a
+    substitute.
+2 - `REQ-MATLAB-002-AC02`: Cold extraction, warm extraction, graph export and
+    refresh preserve source identity, containment and logical signal direction.
+    Adding, editing or removing a relevant target updates surviving references.
+3 - `REQ-MATLAB-002-AC03`: A corrupt, unsupported or oversized archive emits a
+    bounded diagnostic and contributes no partial archive facts to the cache.
+    An incomplete refresh retains the previous accepted graph, and a corrected
+    input can be processed on retry.
+
+Status: **Implemented in INC-MATLAB-01.** See the [verification matrix](../tests/TRACEABILITY.md#inc-matlab-01--saved-matlab-and-simulink-structure).
+
+### REQ-MATLAB-003 — Locate documented MathWorks product use
+
+Graphify shall identify source evidence for MathWorks products in supported
+MATLAB and Simulink inputs using a versioned, offline attribution catalog.
+Each attributed use shall retain its source owner, exact matched evidence and
+catalog release. The initial catalog shall account for every selected product
+in the reference corpus, with corpus observations and fixture-only coverage
+reported separately.
+
+**Acceptance Criteria**
+
+1 - `REQ-MATLAB-003-AC01`: Each of the 12 products in the initial profile has
+    a positive case through the public extraction path. Graphify records the
+    file format, documented API or import, exact saved library path, or
+    verified Stateflow Chart that supplies the evidence. Every witness has
+    the `matlab_product` kind, distinct from source declarations. Multiple
+    matches on one source line retain distinct identities and parsed columns.
+2 - `REQ-MATLAB-003-AC02`: Local candidates, ambiguous or shadowed names,
+    inert text, generic object methods, and unknown library paths cannot
+    manufacture vendor evidence. An assigned built-in `load` result follows
+    the ordinary assignment binding. A no-output or uncertain workspace
+    change keeps the conservative guard. The original source facts remain.
+3 - `REQ-MATLAB-003-AC03`: Product witnesses and their logical ownership
+    survive cache and graph export/reload. Adding, changing or removing a
+    source or shadow removes obsolete evidence. A rejected source preserves
+    accepted products through the existing publication guard.
+4 - `REQ-MATLAB-003-AC04`: Reference-corpus verification accounts for every
+    selected product and every observed external library reference. Where
+    available, independent native dependency analysis distinguishes observed,
+    fixture-only, and unresolved product evidence.
+5 - `REQ-MATLAB-003-AC05`: A bare, unshadowed `ss(A,B,C,D)` call with four
+    explicit positional matrix arguments and a numeric literal or unshadowed
+    positional `zeros` feedthrough shall yield a located, inferred Control
+    System Toolbox witness with its signature. Unknown conversion, MPC
+    option, argument expansion and shadowed forms shall remain unattributed.
+    A line continuation shall retain identical locations under LF and CRLF.
+    Cold, warm and rebuilt graphs shall preserve or retract the witness
+    according to the current sources.
+6 - `REQ-MATLAB-003-AC06`: Hosted source validation shall exercise the
+    dedicated MATLAB and Simulink tests on Linux, Windows and macOS. Native
+    Windows and macOS wheel lanes shall verify grammar availability before
+    running those tests. The core and Linux artifact-only profiles shall
+    retain their existing dependency and test boundaries.
+
+Status: **Implemented and locally verified for the declared R2026b source profile.**
+See the [product attribution](../tests/TRACEABILITY.md#inc-matlab-02--product-attribution)
+and [state-space attribution](../tests/TRACEABILITY.md#inc-matlab-03--state-space-constructor-attribution)
+verification records.
+The [hosted source matrix](matlab/PLAN.md#inc-matlab-04--hosted-source-validation)
+requires evidence from the reviewed pull request revision.

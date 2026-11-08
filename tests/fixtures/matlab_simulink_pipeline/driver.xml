@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<System>
+  <Block BlockType="ModelReference" Name="Referenced payload" SID="2">
+    <PortCounts in="1" out="1"/>
+    <P Name="ModelNameDialog">Payload</P>
+  </Block>
+  <Block BlockType="Reference" Name="Linked filter" SID="3">
+    <PortCounts in="1" out="1"/>
+    <P Name="SourceBlock">Components/Filter</P>
+    <P Name="SourceType">SubSystem</P>
+  </Block>
+  <Block BlockType="M-S-Function" Name="MATLAB step" SID="4">
+    <PortCounts in="1" out="1"/>
+    <P Name="FunctionName">compute_step</P>
+  </Block>
+  <Block BlockType="Inport" Name="Command input" SID="90"/>
+  <Line>
+    <P Name="Name">command</P>
+    <P Name="Src">90#out:1</P>
+    <Branch><P Name="Dst">2#in:1</P></Branch>
+    <Branch>
+      <Branch><P Name="Dst">3#in:1</P></Branch>
+      <Branch><P Name="Dst">4#in:1</P></Branch>
+    </Branch>
+  </Line>
+</System>

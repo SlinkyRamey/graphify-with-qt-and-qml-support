@@ -4140,6 +4140,7 @@ def dispatch_command(cmd: str) -> None:
             QmlSafetyError, qml_refresh_required, require_complete_qml,
         )
         from graphify.qt_analysis_state import inspect_qt_analysis, commit_qt_analysis
+        from graphify.matlab_pipeline import exclude_model_sources, refresh_model_paths, require_complete_models
         try:
             qt_state = inspect_qt_analysis(target, graphify_out, files_by_type.get("code", []),
                                           excludes=_effective_excludes or (), gitignore=_effective_gitignore)
@@ -4156,6 +4157,8 @@ def dispatch_command(cmd: str) -> None:
             from graphify.csharp_incremental import refresh_csharp_paths
             code_files = refresh_csharp_paths(code_files, files_by_type.get("code", []),
                 removed=[*deleted_files, *excluded_files, *graph_stale_sources], profile_changed=qt_state.changed)
+            code_files = refresh_model_paths(code_files, files_by_type.get("code", []),
+                removed=[*deleted_files, *excluded_files, *graph_stale_sources])
 
         semantic_files = doc_files + paper_files + image_files
         # --code-only: index code (pure local AST, no key) and skip the semantic
@@ -4431,6 +4434,9 @@ def dispatch_command(cmd: str) -> None:
                     }
                     _ctx_live.discard(None)
                     _ctx_live.difference_update(_ctx_identity(p) for p in code_files)
+                    # Model declarations are resolved from the admitted language
+                    # slice, never as borrowed generic callable/type candidates.
+                    exclude_model_sources(_ctx_live, _ctx_graph.get("nodes", []), _ctx_identity)
                     for _node in _ctx_graph.get("nodes", []):
                         if not _node.get("id") or not _ctx_is_ast_tier(_node):
                             continue
@@ -4562,7 +4568,8 @@ def dispatch_command(cmd: str) -> None:
             # Reject before semantic work, graph reconciliation, or publication.
             try:
                 require_complete_qml(ast_result, code_files, operation="extract", root=target)
-            except QmlSafetyError as exc:
+                require_complete_models(ast_result)
+            except (QmlSafetyError, ValueError) as exc:
                 print(f"[graphify extract] error: {exc}", file=sys.stderr)
                 sys.exit(1)
         stages.mark("AST extract")

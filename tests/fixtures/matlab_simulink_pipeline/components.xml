@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<System>
+  <Block BlockType="SubSystem" Name="Filter" SID="50">
+    <PortCounts in="1" out="1"/>
+    <System Ref="system_50"/>
+  </Block>
+</System>

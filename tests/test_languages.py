@@ -6406,3 +6406,36 @@ def test_julia_qualified_functor_uses_type_not_variable(tmp_path):
     call_nodes = [n for n in r["nodes"] if n["id"].endswith("_call")]
     # Module-qualified receiver types resolve to the bare type, never the variable.
     assert [n["label"] for n in call_nodes] == ["(Box)()"]
+
+
+def test_matlab_file_ownership_survives_warm_cache_and_mixed_language(tmp_path):
+    """Identical MATLAB bytes belong to the actual file, even on a cache hit."""
+    from graphify.extract import extract
+
+    pytest.importorskip("tree_sitter_language_pack")
+    fixture = FIXTURES / "matlab_simulink_pipeline" / "compute_step.m"
+    sources = []
+    for directory in ("first", "second"):
+        source = tmp_path / directory / fixture.name
+        source.parent.mkdir()
+        source.write_bytes(fixture.read_bytes())
+        sources.append(source)
+    native = tmp_path / "first" / "compute_step.py"
+    native.write_text("def compute_step(value):\n    return value\n", encoding="utf-8")
+    inputs = [*sources, native]
+    cold = extract(inputs, root=tmp_path, cache_root=tmp_path, parallel=False)
+    warm = extract(inputs, root=tmp_path, cache_root=tmp_path, parallel=False)
+    assert (cold["nodes"], cold["edges"]) == (warm["nodes"], warm["edges"])
+    assert not warm["failed_sources"]
+    assert len({node["id"] for node in warm["nodes"]}) == len(warm["nodes"])
+    matlab = [node for node in warm["nodes"] if node.get("metadata", {}).get("language") == "matlab"]
+    assert {(node["source_file"], node["metadata"]["kind"]) for node in matlab} == {
+        (f"{directory}/compute_step.m", kind)
+        for directory in ("first", "second") for kind in ("matlab_file", "matlab_function")
+    }
+    owners = {node["id"]: node["source_file"] for node in warm["nodes"]}
+    assert all(
+        owners[edge["source"]] == owners[edge["target"]]
+        for edge in warm["edges"]
+        if edge["source"] in owners and edge["target"] in owners
+    )

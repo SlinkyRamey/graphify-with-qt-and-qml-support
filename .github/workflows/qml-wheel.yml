@@ -34,7 +34,8 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       # Existing Ubuntu all-extras CI owns source regressions. These lanes prove
-      # isolated optional/core wheel installs; Windows/macOS add QML source tests.
+      # isolated optional/core wheel installs; Windows/macOS also run Qt and
+      # MATLAB/Simulink source tests using the wheel's pinned language pack.
       - name: Verify installed wheels and platform contracts
         env:
           GRAPHIFY_QML_JUNIT_PATH: ${{ runner.temp }}/graphify-qml-results/tests.xml
