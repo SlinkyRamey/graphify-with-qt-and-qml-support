@@ -139,6 +139,19 @@ Upstream merging and package publication remain separate delivery steps.
 
 ---
 
+### MATLAB and Simulink
+
+Graphify indexes MATLAB `.m` declarations and saved Simulink `.slx` model
+hierarchies, ports, signals, and literal dependencies. Install
+`graphifyy[matlab]` for MATLAB parsing. The SLX structural reader works with the
+core package. Both use the ordinary code-only extraction path.
+
+```sh
+graphify extract path/to/project --code-only
+```
+
+See the [supported source profiles and limits](docs/matlab/DESIGN.md).
+
 ## Benchmarks: 0.497 recall@10, 0 LLM credits
 
 | Benchmark | Metric | graphify | Field |

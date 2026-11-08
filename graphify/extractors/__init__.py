@@ -24,6 +24,8 @@ from graphify.extractors.go import extract_go
 from graphify.extractors.json_config import extract_json
 from graphify.extractors.julia import extract_julia
 from graphify.extractors.markdown import extract_markdown
+from graphify.extractors.matlab import extract_matlab
+from graphify.extractors.simulink import extract_simulink
 from graphify.extractors.objc import extract_objc
 from graphify.extractors.pascal import extract_pascal
 from graphify.extractors.pascal_forms import extract_delphi_form, extract_lazarus_form
@@ -71,6 +73,8 @@ LANGUAGE_EXTRACTORS: dict[str, Callable[[Path], dict]] = {
     "julia": extract_julia,
     "lazarus_form": extract_lazarus_form,
     "markdown": extract_markdown,
+    "matlab": extract_matlab,
+    "simulink": extract_simulink,
     "objc": extract_objc,
     "pascal": extract_pascal,
     "powershell": extract_powershell,

@@ -994,3 +994,53 @@ prior local module are eligible. Known QRC additions do not describe the complet
 variable expansion. Inherited variable contents,
 general CMake evaluation, RCC options, arbitrary mutation and external discovery
 remain outside this profile. Existing integrity and persistence criteria apply.
+
+
+## MATLAB and Simulink
+
+### REQ-MATLAB-001 — Extract saved MATLAB and Simulink structure
+
+Graphify shall discover and analyze admitted MATLAB source and Simulink model
+archives using the ordinary code extraction interface. Facts shall identify the
+owning source and declaration or saved model element.
+
+**Acceptance Criteria**
+
+1 - `REQ-MATLAB-001-AC01`: MATLAB `.m` reaches the MATLAB syntax reader.
+    Objective-C `.m`, Objective-C++ `.mm` and explicit language remaps retain
+    their established routing. Unrecognized input produces no invented MATLAB
+    declarations. A missing optional parser has an actionable diagnostic.
+2 - `REQ-MATLAB-001-AC02`: Scripts, functions, nested and local functions,
+    classes, methods and supported class members have distinct source-located
+    identities and ownership. Comments, literals and ambiguous indexing do not
+    create declarations or resolved call edges.
+3 - `REQ-MATLAB-001-AC03`: An admitted `.slx` model or library contributes its
+    saved subsystem hierarchy, blocks and ports. The reader handles the supported
+    XML and JSON header layouts without opening a model in Simulink.
+4 - `REQ-MATLAB-001-AC04`: A saved signal records source and destination ports,
+    including each supported branch destination. The source location identifies
+    the contributing archive member. Missing endpoints remain unresolved.
+
+Status: **Implemented in INC-MATLAB-01.** See the [verification matrix](../tests/TRACEABILITY.md#inc-matlab-01--saved-matlab-and-simulink-structure).
+
+### REQ-MATLAB-002 — Resolve dependencies and retain valid graph products
+
+Graphify shall retain evidence for literal model and code references, connect
+only supported unambiguous targets within the admitted corpus, and preserve
+valid graph output on a failed refresh.
+
+**Acceptance Criteria**
+
+1 - `REQ-MATLAB-002-AC01`: Literal model, library and supported MATLAB references
+    link to their eligible source-owned targets. Absent or ambiguous targets
+    remain unresolved, and other languages and excluded files cannot supply a
+    substitute.
+2 - `REQ-MATLAB-002-AC02`: Cold extraction, warm extraction, graph export and
+    refresh preserve source identity, containment and logical signal direction.
+    Adding, editing or removing a relevant target updates surviving references.
+3 - `REQ-MATLAB-002-AC03`: A corrupt, unsupported or oversized archive emits a
+    bounded diagnostic and contributes no partial archive facts to the cache.
+    An incomplete refresh retains the previous accepted graph, and a corrected
+    input can be processed on retry.
+
+Status: **Implemented in INC-MATLAB-01.** See the [verification matrix](../tests/TRACEABILITY.md#inc-matlab-01--saved-matlab-and-simulink-structure).

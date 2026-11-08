@@ -39,6 +39,11 @@ for word counting; detection also bypasses any older cached counts for them. SVG
 remains text-readable, and PDF/Office files retain their existing text converters.
 This avoids reading and splitting entire binary media files just to size the corpus.
 
+MATLAB source and Simulink model archives join the deterministic code pipeline.
+Simulink archives bypass text word counting. The readers and corpus resolver
+produce source-owned model structure, separate from generic callable resolution.
+See the [MATLAB and Simulink design](docs/matlab/DESIGN.md).
+
 ### Calling `extract()` from your own code
 
 `extract()` takes a **list** of paths, and `root` is keyword-only and optional:

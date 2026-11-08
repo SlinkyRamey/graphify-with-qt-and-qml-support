@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<System>
+  <Block BlockType="Inport" Name="Input" SID="1"/>
+  <Block BlockType="Outport" Name="Output" SID="2"/>
+  <Line><P Name="Src">1#out:1</P><P Name="Dst">2#in:1</P></Line>
+</System>

@@ -5720,22 +5720,21 @@ def test_extract_reports_ast_cache_hit_rate_over_file_total(tmp_path, capsys):
 
 def test_get_extractor_routes_matlab_m_away_from_objc(tmp_path):
     # #1702: .m is shared by Objective-C and MATLAB. A real ObjC .m still routes to
-    # extract_objc, but a MATLAB .m must NOT be force-parsed by the ObjC grammar
-    # (which produces garbage) — it gets no extractor instead.
-    from graphify.extract import _get_extractor, extract_objc
+    # extract_objc. MATLAB source belongs to its dedicated grammar.
+    from graphify.extract import _get_extractor, extract_matlab, extract_objc
 
     objc = tmp_path / "Foo.m"
     objc.write_text('#import "Foo.h"\n@implementation Foo\n- (void)bar {}\n@end\n')
     matlab_fn = tmp_path / "solver.m"
-    matlab_fn.write_text("function y = solver(x)\n  y = x + 1;\nend\n")
+    matlab_fn.write_text("%{\n@implementation NotObjectiveC\n%}\nfunction y = solver(x)\n  y = x + 1;\nend\n")
     matlab_cls = tmp_path / "Model.m"
     matlab_cls.write_text("classdef Model\n  methods\n    function run(obj); end\n  end\nend\n")
     mm = tmp_path / "x.mm"
     mm.write_text("#import <F/F.h>\n@implementation X\n@end\n")
 
     assert _get_extractor(objc) is extract_objc            # real ObjC .m -> objc
-    assert _get_extractor(matlab_fn) is None               # MATLAB function -> no garbage
-    assert _get_extractor(matlab_cls) is None              # MATLAB classdef -> no garbage
+    assert _get_extractor(matlab_fn) is extract_matlab     # MATLAB function and inert markers
+    assert _get_extractor(matlab_cls) is extract_matlab    # MATLAB class
     assert _get_extractor(mm) is extract_objc              # .mm is unambiguously ObjC++
 
 
@@ -5750,14 +5749,22 @@ def test_markdown_dispatch_matches_resolution_suffixes():
     assert dispatched == MARKDOWN_MENTION_SUFFIXES
 
 
-def test_matlab_m_not_extracted_as_garbage(tmp_path, capsys):
-    # End to end: a MATLAB .m produces no (garbage) nodes and is surfaced by the
-    # no-AST-extractor warning (#1702 + #1689), rather than mis-parsed as ObjC.
-    m = tmp_path / "controller.m"
-    m.write_text("function u = controller(x)\n  u = -x;\nend\n")
-    result = extract([m], cache_root=tmp_path)
-    assert result["nodes"] == []                           # no garbage ObjC nodes
-    assert "no AST extractor" in capsys.readouterr().err    # surfaced, not silent
+def test_matlab_m_routes_to_source_extractor(tmp_path):
+    """The shared suffix keeps genuine MATLAB declarations out of ObjC."""
+    pytest.importorskip("tree_sitter_language_pack")
+    source = tmp_path / "controller.m"
+    source.write_text("function u = controller(x)\n  u = -x;\nend\n")
+    result = extract([source], root=tmp_path, cache_root=tmp_path)
+    assert not result["failed_sources"]
+    facts = {node["metadata"]["kind"]: node for node in result["nodes"]}
+    assert set(facts) == {"matlab_file", "matlab_function"}
+    function = facts["matlab_function"]
+    assert function["metadata"]["matlab_name"] == "controller"
+    assert (function["source_file"], function["source_location"]) == ("controller.m", "L1")
+    assert any(
+        edge["source"] == facts["matlab_file"]["id"] and edge["target"] == function["id"]
+        for edge in result["edges"]
+    )
 
 
 def test_rewire_binds_cross_module_function_reference_to_definition():

@@ -2029,6 +2029,27 @@ def _reconcile_graph_html(out: Path, graph_data: dict) -> str | None:
     return "rendered"
 
 
+def _semantic_backed_documents(ast_doc_files, prior, paths, project_root, is_ast_tier) -> set[Path]:
+    """Identify semantic-backed documents from the accepted preflight graph."""
+    # Concept, rationale and code references can be the only semantic evidence
+    # for an admitted document (#1954/#2014). Unstamped AST headings do not count.
+    identities = set()
+    for node in prior.get("nodes", []):
+        if is_ast_tier(node) or node.get("file_type") not in (
+            "document", "concept", "rationale", "paper", "code"
+        ):
+            continue
+        identity = paths.identity(node.get("source_file"))
+        if identity:
+            identities.add(identity)
+    if not identities:
+        return set()
+    return {
+        path for path in ast_doc_files
+        if paths.absolute_identity(str(path), project_root) in identities
+    }
+
+
 def _rebuild_code(
     watch_path: Path,
     *,
@@ -2162,6 +2183,7 @@ def _rebuild_code(
         )
         code_files = [Path(f) for f in detected['files']['code']]
         from graphify.qt_analysis_state import inspect_qt_analysis, commit_qt_analysis
+        from graphify.matlab_pipeline import exclude_model_sources, refresh_model_paths, require_complete_models
         qt_state = inspect_qt_analysis(watch_root, out, code_files,
                                       excludes=_persisted_excludes, gitignore=_gitignore_enabled)
         qt_full_refresh = qt_state.has_qt and qt_state.changed
@@ -2298,41 +2320,9 @@ def _rebuild_code(
                     watch_root=watch_root,
                     normalize_source=_nsf,
                 )
-                # Semantic doc nodes lack the AST origin marker. Gate on the
-                # doc-shaped subset of the six-value file_type enum
-                # (document/concept/rationale/paper AND code) rather than
-                # "document" alone: per the extraction spec, a doc full of named
-                # concepts may be represented with ONLY concept/rationale
-                # nodes and no separate "document" node — that's still
-                # evidence of a semantic layer, not a marker-less AST node
-                # (#1954). "code" is included too (#2014): the semantic pass
-                # legitimately mints code-typed nodes for symbols surfaced from
-                # WITHIN a doc (llm.py `_bind_node_evidence`), and it cannot be
-                # confused with a pre-#1865 marker-less AST code node — those are
-                # sourced from code files, which never intersect ast_doc_files
-                # below, whereas the AST quick-scan of a doc only ever mints
-                # "document" nodes (extractors/markdown.py). "image" stays out.
-                semantic_doc_identities: set[str] = set()
-                for node in prior.get("nodes", []):
-                    # _is_ast_tier, not a raw _origin check (#2334): a legacy
-                    # unstamped AST heading node (source_location "L<n>") must
-                    # not fake a semantic layer, or the doc would be excluded
-                    # from the AST quick-scan forever.
-                    if _is_ast_tier(node):
-                        continue
-                    if node.get("file_type") not in (
-                        "document", "concept", "rationale", "paper", "code"
-                    ):
-                        continue
-                    identity = prior_paths.identity(node.get("source_file"))
-                    if identity:
-                        semantic_doc_identities.add(identity)
-                if semantic_doc_identities:
-                    semantic_doc_files = {
-                        p for p in ast_doc_files
-                        if prior_paths.absolute_identity(str(p), project_root)
-                        in semantic_doc_identities
-                    }
+                semantic_doc_files = _semantic_backed_documents(
+                    ast_doc_files, prior, prior_paths, project_root, _is_ast_tier,
+                )
             except Exception:
                 semantic_doc_files = set()
 
@@ -2438,6 +2428,7 @@ def _rebuild_code(
                 print("[graphify watch] Qt/QML inputs changed; refreshing the live code corpus.")
             from graphify.csharp_incremental import refresh_csharp_paths
             wanted = refresh_csharp_paths(wanted, code_files, removed=deleted_paths, profile_changed=qt_state.changed)
+            wanted = refresh_model_paths(wanted, code_files, removed=deleted_paths)
             if not wanted and not deleted_paths and not qt_full_refresh:
                 print("[graphify watch] No tracked code files in change set - skipping rebuild.")
                 return True
@@ -2488,6 +2479,9 @@ def _rebuild_code(
                 }
                 ctx_live -= deleted_source_identities
                 ctx_live.discard(None)
+                # Exclude both nodes and edges from saved model sources before
+                # projecting metadata into the native resolver context.
+                exclude_model_sources(ctx_live, ctx_graph.get("nodes", []), ctx_paths.identity)
                 for node in ctx_graph.get("nodes", []):
                     if not node.get("id") or not _is_ast_tier(node):
                         continue
@@ -2622,6 +2616,7 @@ def _rebuild_code(
         # The count-based shrink guard cannot account for edge loss or unrelated
         # additions. QML failure rejects the candidate before any reconciliation.
         require_complete_qml(result, extract_targets, operation="update/watch", root=watch_root)
+        require_complete_models(result, scan_root=watch_root, publication_root=project_root)
         if project_root != watch_root and any(
             node.get("metadata", {}).get("qt", {}).get("contract_version") == 1
             for node in result.get("nodes", [])

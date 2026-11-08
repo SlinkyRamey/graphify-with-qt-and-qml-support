@@ -6073,3 +6073,38 @@ validators pass. Whole Ruff passes; qualified Pyright retains exactly688
 diagnostic identities, no additions or retirements relative to `da4ab45f`, with
 the previously established raw-parent classification retained. Full source,
 fresh package/consumers, native PR and resulting-v8 gates remain separate.
+
+
+## INC-MATLAB-01 — Saved MATLAB and Simulink structure
+
+The [requirements](../docs/REQUIREMENTS.md#matlab-and-simulink) and
+[design](../docs/matlab/DESIGN.md) describe the offline source profile.
+
+| Criterion | Source and pipeline evidence |
+| --- | --- |
+| REQ-MATLAB-001-AC01 | `test_extract.py::test_get_extractor_routes_matlab_m_away_from_objc`, `test_matlab_m_routes_to_source_extractor`, existing `test_language_overrides.py`, and `test_matlab_source_extractor.py::test_matlab_parser_missing_does_not_invent_declarations` |
+| REQ-MATLAB-001-AC02 | `test_matlab_source_extractor.py` and `test_matlab_source_boundaries.py` cover class members, lexical ownership, separate identities, encoding, shadowing, indexing and file-scope binding |
+| REQ-MATLAB-001-AC03 | `test_simulink_extract.py::test_req_matlab001_ac03_ac04_split_signals_and_subsystem_mapping`, `test_req_matlab001_ac03_flat_library_references` and `test_simulink_stateflow.py` |
+| REQ-MATLAB-001-AC04 | Split signal and local SID tests in `test_simulink_extract.py`; the CLI direction test also reads back normal and typed-storage graphs |
+| REQ-MATLAB-002-AC01 | `test_matlab_simulink_pipeline.py::test_req_matlab_002_ac01_ac02_cli_persists_exact_saved_direction_and_dependencies`, `test_workspace_file_link_requires_matlab_source_type`, and the MATLAB corpus/private/package and model API witness tests |
+| REQ-MATLAB-002-AC02 | `test_matlab_simulink_pipeline.py::test_req_matlab_002_ac02_incremental_target_add_ambiguity_and_remove`, `test_languages.py::test_matlab_file_ownership_survives_warm_cache_and_mixed_language`, and the model move/rename test |
+| REQ-MATLAB-002-AC03 | `test_matlab_simulink_pipeline.py::test_req_matlab_002_ac03_corrupt_archive_retains_accepted_products_and_retries` exercises actual CLI extract and update rejection and retry; malformed, cyclic and over-limit package fixtures cover reader admission |
+
+Local verification uses Windows, the pinned optional grammar, independent
+archive comparisons and a fresh installed core/MATLAB profile. The private
+reference corpus stays outside the test fixtures. Its saved model, block,
+signal, dependency and supported Stateflow records were compared against
+the exported graph, and cold and warm output bytes agreed. Runtime model
+validation and active variant evaluation are separate. Hosted platform
+verification remains open.
+
+The aligned Windows run used `python -m pytest tests -q --tb=short -rs` with
+isolated scratch, cache and JUnit destinations. It completed with 16,089
+passes, 220 skips and one expected failure. All six parallel Terraform cache
+cases passed after the test process and workers used the same installed package
+version. The focused suite and installed profiles exercised the ordinary CLI,
+direct API, warm caches, persisted direction, failed refresh retention and
+successful retry. The final wheel matched its source and both clean profiles
+installed from locked dependencies offline. Ruff, the lock check, generated
+artifact validation and an AST-only repository graph update passed. The type
+check retained the baseline's 688 diagnostics with zero new diagnostics.

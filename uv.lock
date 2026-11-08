@@ -1658,6 +1658,9 @@ leiden = [
     { name = "graspologic", marker = "python_full_version < '3.13'" },
     { name = "graspologic-native", marker = "python_full_version >= '3.13'" },
 ]
+matlab = [
+    { name = "tree-sitter-language-pack" },
+]
 mcp = [
     { name = "anyio" },
     { name = "mcp" },
@@ -1837,6 +1840,7 @@ requires-dist = [
     { name = "tree-sitter-kotlin", specifier = ">=1.0,<2.0" },
     { name = "tree-sitter-language-pack", marker = "extra == 'all'", specifier = "==0.11.0" },
     { name = "tree-sitter-language-pack", marker = "extra == 'erlang'", specifier = "==0.11.0" },
+    { name = "tree-sitter-language-pack", marker = "extra == 'matlab'", specifier = "==0.11.0" },
     { name = "tree-sitter-language-pack", marker = "extra == 'qml'", specifier = "==0.11.0" },
     { name = "tree-sitter-language-pack", marker = "extra == 'r'", specifier = "==0.11.0" },
     { name = "tree-sitter-lua", specifier = ">=0.2,<0.6" },
@@ -1867,7 +1871,7 @@ requires-dist = [
     { name = "yt-dlp", marker = "extra == 'all'", specifier = ">=2026.7.4" },
     { name = "yt-dlp", marker = "extra == 'video'", specifier = ">=2026.7.4" },
 ]
-provides-extras = ["mcp", "neo4j", "falkordb", "pdf", "watch", "svg", "leiden", "office", "google", "postgres", "video", "kimi", "ollama", "bedrock", "anthropic", "gemini", "openai", "chinese", "sql", "pascal", "dm", "terraform", "ocaml", "commonlisp", "robot", "vbnet", "r", "qml", "erlang", "solidity", "all"]
+provides-extras = ["mcp", "neo4j", "falkordb", "pdf", "watch", "svg", "leiden", "office", "google", "postgres", "video", "kimi", "ollama", "bedrock", "anthropic", "gemini", "openai", "chinese", "sql", "pascal", "dm", "terraform", "ocaml", "commonlisp", "robot", "vbnet", "r", "qml", "matlab", "erlang", "solidity", "all"]
 
 [package.metadata.requires-dev]
 dev = [
