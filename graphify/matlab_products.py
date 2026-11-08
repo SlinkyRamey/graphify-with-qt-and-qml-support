@@ -35,7 +35,7 @@ def append_product(
     provenance = {"source_file": owner["source_file"], "source_location": location}
     nodes.append({
         "id": witness, "label": f"{product} · {symbol}", "file_type": "code", "type": "concept",
-        "_origin": "ast", "metadata": {"matlab_product": details}, **provenance,
+        "_origin": "ast", "metadata": {"kind": "matlab_product", "matlab_product": details}, **provenance,
     })
     # Even a documented match is a source-level inference about the product,
     # independent of whether MATLAB could resolve it on a particular host.

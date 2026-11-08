@@ -88,7 +88,8 @@ variable and preserves other source-visible bindings. No-output or uncertain
 workspace-changing calls retain the conservative guard.
 [MATLAB load forms](https://www.mathworks.com/help/matlab/ref/load.html)
 
-Each observed use attaches a source-owned `uses_matlab_product` witness.
+Each observed use attaches a source-owned witness of kind `matlab_product`
+through `uses_matlab_product`.
 MATLAB calls and explicit imports preserve parsed line and byte column.
 Library and chart witnesses preserve the archive member and line. A library
 witness also carries the UTF-8 literal as `symbol_base64`, so saved
@@ -149,7 +150,7 @@ boundaries.
 | `graphify/detect.py` | Discovery | 3,248 / 3,251 | Archive admission and word-count bypass |
 | `graphify/cli.py` | CLI publication | 5,575 / 5,582 | Existing incremental selection and failure gate |
 | `graphify/watch.py` | Watcher publication | 3,444 / 3,439 | Language refresh and guard; semantic document selection moves to a pure helper |
-| `tests/test_extract.py` | Extractor regressions | 6,631 / 6,638 | Existing shared-suffix contract |
+| `tests/test_extract.py` | Extractor regressions | 6,631 / 6,643 | Existing shared-suffix contract and the additive source-format witness |
 | `tests/test_languages.py` | Language fixture contracts | 6,408 / 6,441 | Mixed-source ownership on warm cache |
 
 The watcher still owns the read and failure policy. The pure document helper

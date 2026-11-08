@@ -1059,8 +1059,9 @@ reported separately.
 1 - `REQ-MATLAB-003-AC01`: Each of the 12 products in the initial profile has
     a positive case through the public extraction path. Graphify records the
     file format, documented API or import, exact saved library path, or
-    verified Stateflow Chart that supplies the evidence. Multiple matches on
-    one source line retain distinct identities and their parsed columns.
+    verified Stateflow Chart that supplies the evidence. Every witness has
+    the `matlab_product` kind, distinct from source declarations. Multiple
+    matches on one source line retain distinct identities and parsed columns.
 2 - `REQ-MATLAB-003-AC02`: Local candidates, ambiguous or shadowed names,
     inert text, generic object methods, and unknown library paths cannot
     manufacture vendor evidence. An assigned built-in `load` result follows

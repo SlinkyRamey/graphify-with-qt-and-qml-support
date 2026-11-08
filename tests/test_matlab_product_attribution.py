@@ -94,6 +94,7 @@ def _uses(data: dict, evidence: str | None = None) -> list[tuple[dict, dict, dic
     for edge in edges:
         site = sites[edge["target"]]
         owner, target = nodes[edge["source"]], nodes[edge["target"]]
+        assert target["metadata"]["kind"] == "matlab_product"
         assert owner["source_file"] == target["source_file"] == edge["source_file"]
         assert target["source_location"] == edge["source_location"]
         assert site["name"] in target["label"]

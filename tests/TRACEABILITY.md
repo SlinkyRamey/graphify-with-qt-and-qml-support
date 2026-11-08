@@ -6176,3 +6176,15 @@ All 94 cases passed, including 81 MATLAB/Simulink cases, with zero skips.
 The installed pinned parser loaded the MATLAB grammar. Hosted acceptance
 requires JUnit case readback from the reviewed revision's Linux full-suite
 lanes and Windows/macOS native wheel lanes.
+
+The first hosted Linux suite to finish reproduced a product witness
+compatibility gap in `test_extract.py::test_matlab_m_routes_to_source_extractor`.
+The old assertion expected exactly the source file and function kinds, and
+the new witness lacked its own kind. The same `KeyError` reproduced locally
+before correction. The revised check still asserts both declaration kinds
+and their ownership, and additionally requires a distinct
+`matlab_product` witness linked to the source file. The product consumer
+checks also verify that its kind survives graph publication.
+The corrected local selection passed all 97 cases with zero skips,
+including the original routing check, its adjacent dispatch/ownership
+checks, and the dedicated model and wheel-profile suites.

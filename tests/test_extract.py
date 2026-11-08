@@ -5757,7 +5757,12 @@ def test_matlab_m_routes_to_source_extractor(tmp_path):
     result = extract([source], root=tmp_path, cache_root=tmp_path)
     assert not result["failed_sources"]
     facts = {node["metadata"]["kind"]: node for node in result["nodes"]}
-    assert set(facts) == {"matlab_file", "matlab_function"}
+    # The source-format witness is distinct from the existing file and declaration.
+    assert set(facts) == {"matlab_file", "matlab_function", "matlab_product"}
+    witness = facts["matlab_product"]
+    assert witness["metadata"]["matlab_product"]["name"] == "MATLAB"
+    assert any(edge["source"] == facts["matlab_file"]["id"] and edge["target"] == witness["id"]
+               and edge["relation"] == "uses_matlab_product" for edge in result["edges"])
     function = facts["matlab_function"]
     assert function["metadata"]["matlab_name"] == "controller"
     assert (function["source_file"], function["source_location"]) == ("controller.m", "L1")
