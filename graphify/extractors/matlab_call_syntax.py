@@ -41,6 +41,7 @@ class Workspace:
     import_sites: list[tuple[str, Node]] = field(default_factory=list)
     wildcard_import: bool = False
     uncertain: bool = False
+    assigned_load: bool = False
     sites: list[CallSite] = field(default_factory=list)
 
 
@@ -139,6 +140,16 @@ def _visit_command(node: Node, result: Workspace) -> None:
         result.sites.append(CallSite(name, node, model))
 
 
+def _assigned_load(node: Node) -> bool:
+    """MATLAB's single assigned load output binds only the assignment target."""
+    assignment = node.parent
+    if assignment is None or assignment.type != "assignment":
+        return False
+    left = assignment.child_by_field_name("left")
+    return (left is not None and left.type == "identifier"
+            and assignment.child_by_field_name("right") == node)
+
+
 def inspect_workspace(syntax: Node) -> Workspace:
     """Respect parsed scopes and collect bindings, imports, and literal sites."""
     result = Workspace()
@@ -172,7 +183,9 @@ def inspect_workspace(syntax: Node) -> Workspace:
         if kind == "function_call":
             site = _call_site(node)
             if site is not None:
-                if site.name in _WORKSPACE_CHANGES or site.name == "import":
+                if site.name == "load" and _assigned_load(node):
+                    result.assigned_load = True
+                elif site.name in _WORKSPACE_CHANGES or site.name == "import":
                     result.uncertain = True
                 elif site.name != "feval":
                     result.sites.append(site)

@@ -115,7 +115,8 @@ class MatlabFacts:
     def add_call(self, owner: MatlabScope, callee: str, syntax: Node, **metadata) -> None:
         self.raw_calls.append({
             "caller_nid": owner.record["id"], "callee": callee, "source_file": str(self.path),
-            "source_location": f"L{syntax.start_point.row + 1}", "_matlab_call": True, **metadata,
+            "source_location": f"L{syntax.start_point.row + 1}",
+            "matlab_column": syntax.start_point.column + 1, "_matlab_call": True, **metadata,
         })
 
     def _class_members(self, syntax: Node, owner: MatlabScope) -> None:

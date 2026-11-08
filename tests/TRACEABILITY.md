@@ -6108,3 +6108,34 @@ successful retry. The final wheel matched its source and both clean profiles
 installed from locked dependencies offline. Ruff, the lock check, generated
 artifact validation and an AST-only repository graph update passed. The type
 check retained the baseline's 688 diagnostics with zero new diagnostics.
+
+## INC-MATLAB-02 — Product attribution
+
+| Criterion | Verification for the R2026b source profile |
+| --- | --- |
+| REQ-MATLAB-003-AC01 | `test_matlab_product_attribution.py::test_req_matlab003_ac01_product_matrix_includes_all_selected_families` verifies all 12 products through the extraction facade. `test_req_matlab003_ac03_cli_cold_warm_and_reload_keep_distinct_source_sites` verifies exact same-line call sites and literal saved paths through both JSON graph profiles. |
+| REQ-MATLAB-003-AC02 | `test_req_matlab003_ac02_stateflow_product_requires_a_saved_stateflow_chart`, `test_req_matlab003_ac02_simulink_reference_matching_is_exact_and_offline`, and `test_req_matlab003_ac02_lexical_guards_and_corpus_names_win` in `test_matlab_product_attribution.py` cover block, library and syntax boundaries. `test_matlab_assigned_load.py::test_req_matlab003_ac02_assigned_load_preserves_only_proved_product_sites` reproduces the native-audit miss and covers the no-output, workspace mutation and shadow cases. |
+| REQ-MATLAB-003-AC03 | The CLI cold/warm test above, `test_req_matlab003_ac03_watcher_retracts_and_restores_evidence_for_project_shadows` and `test_req_matlab003_ac03_corrupt_model_retains_attribution_and_accepts_repair` verify update, retraction, rejection and recovery against actual graph products. |
+| REQ-MATLAB-003-AC04 | An independent saved-archive read and isolated R2026b per-file dependency analyses compared all 189 reference inputs. Graphify retained 995 located witnesses, including all 136 external library occurrences across 11 exact paths and seven verified Stateflow charts. Cold/warm graph bytes agreed. Private source and native reports stay in local evidence. |
+
+The reference corpus exercised nine products. Simulink Control Design,
+Symbolic Math Toolbox and Model Predictive Control Toolbox were verified by
+synthetic cases, with no corresponding source witnesses or native dependency
+reports in this snapshot. The 47 Simulink 3D Animation witnesses are shared
+associations. MathWorks reported Aerospace Blockset in the aggregate and
+multiple possible 3D product owners in its MATLAB scan. The graph records
+the documented association to Simulink 3D Animation with shared ownership.
+The two direct Parallel Computing misses from assigned `load` were corrected.
+One native-certain Control System Toolbox file still uses overloads outside
+the catalog, including `ss`. The per-file comparison retains all differences.
+
+The Windows focused command selected the MATLAB/Simulink extractor and
+pipeline tests, watcher, language resolvers and cross-language call resolver
+tests with isolated pytest output. It passed 271 cases with six existing
+platform skips. A broader parallel attempt encountered memory exhaustion.
+The three modules with recorded failures passed all 112 cases on isolated
+retry. Full-suite completion for this increment remains open. Ruff and
+the offline lock check passed, and Pyright retained 688 baseline diagnostics
+with zero new ones. A fresh source-matched wheel passed core and MATLAB
+consumer checks, including product evidence, rejection and retry. The
+repository graph was refreshed with AST-only `graphify update .`.

@@ -18,8 +18,11 @@ def model_cache_salt(path: Path, root: Path) -> str | None:
         return language
     absolute = path.absolute()
     owner = absolute.relative_to(root) if absolute.is_relative_to(root) else absolute
-    # A private epoch retires the ambiguous .m cache without evicting other languages.
-    return json.dumps(["matlab-simulink-1", suffix, owner.as_posix(), language])
+    # Epoch 1 retired ambiguous .m entries. Epoch 2 adds precise API witness
+    # columns and local shadow evidence, including assigned load. Unrelated
+    # languages keep their existing entries.
+    epoch = "matlab-simulink-2" if suffix == ".m" else "matlab-simulink-1"
+    return json.dumps([epoch, suffix, owner.as_posix(), language])
 
 
 def refresh_model_paths(changed, admitted, *, removed=(), profile_changed=False):
@@ -60,7 +63,9 @@ def require_complete_models(result: dict, *, scan_root=None, publication_root=No
 def is_model_node(node: dict) -> bool:
     """Recognize producer-stamped facts before native symbol tables see them."""
     metadata = node.get("metadata") if isinstance(node, dict) else None
-    return isinstance(metadata, dict) and (metadata.get("language") == "matlab" or "simulink" in metadata)
+    return isinstance(metadata, dict) and (
+        metadata.get("language") == "matlab" or "simulink" in metadata or "matlab_product" in metadata
+    )
 
 
 def is_model_result(result: dict) -> bool:
@@ -105,6 +110,7 @@ def without_model_context(nodes, edges):
 def extract_model_facts(results: list[dict], root: Path) -> tuple[list[dict], list[dict]]:
     """Resolve exclusively among admitted producer facts before display sanitization."""
     from graphify.extractors.matlab_resolution import resolve_matlab_calls
+    from graphify.matlab_products import record_saved_products
     from graphify.simulink_resolution import resolve_simulink_references
 
     nodes = [node for result in results for node in result.get("nodes", ())]
@@ -118,6 +124,8 @@ def extract_model_facts(results: list[dict], root: Path) -> tuple[list[dict], li
         if path.is_absolute() and path.is_relative_to(root):
             path = path.relative_to(root)
         item["source_file"] = path.as_posix()
-    model_references = resolve_matlab_calls(nodes, edges, raw_calls, root=root)
+    product_nodes: list[dict] = []
+    model_references = resolve_matlab_calls(nodes, edges, raw_calls, root=root, product_nodes=product_nodes)
     resolve_simulink_references(nodes, edges, model_references)
-    return nodes, edges
+    record_saved_products(nodes, edges, product_nodes)
+    return [*nodes, *product_nodes], edges

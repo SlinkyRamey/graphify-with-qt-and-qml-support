@@ -1044,3 +1044,36 @@ valid graph output on a failed refresh.
     input can be processed on retry.
 
 Status: **Implemented in INC-MATLAB-01.** See the [verification matrix](../tests/TRACEABILITY.md#inc-matlab-01--saved-matlab-and-simulink-structure).
+
+### REQ-MATLAB-003 — Locate documented MathWorks product use
+
+Graphify shall identify source evidence for MathWorks products in supported
+MATLAB and Simulink inputs using a versioned, offline attribution catalog.
+Each attributed use shall retain its source owner, exact matched evidence and
+catalog release. The initial catalog shall account for every selected product
+in the reference corpus, with corpus observations and fixture-only coverage
+reported separately.
+
+**Acceptance Criteria**
+
+1 - `REQ-MATLAB-003-AC01`: Each of the 12 products in the initial profile has
+    a positive case through the public extraction path. Graphify records the
+    file format, documented API or import, exact saved library path, or
+    verified Stateflow Chart that supplies the evidence. Multiple matches on
+    one source line retain distinct identities and their parsed columns.
+2 - `REQ-MATLAB-003-AC02`: Local candidates, ambiguous or shadowed names,
+    inert text, generic object methods, and unknown library paths cannot
+    manufacture vendor evidence. An assigned built-in `load` result follows
+    the ordinary assignment binding. A no-output or uncertain workspace
+    change keeps the conservative guard. The original source facts remain.
+3 - `REQ-MATLAB-003-AC03`: Product witnesses and their logical ownership
+    survive cache and graph export/reload. Adding, changing or removing a
+    source or shadow removes obsolete evidence. A rejected source preserves
+    accepted products through the existing publication guard.
+4 - `REQ-MATLAB-003-AC04`: Reference-corpus verification accounts for every
+    selected product and every observed external library reference. Where
+    available, independent native dependency analysis distinguishes observed,
+    fixture-only, and unresolved product evidence.
+
+Status: **Implemented and verified for the declared R2026b source profile in INC-MATLAB-02.**
+See the [verification matrix](../tests/TRACEABILITY.md#inc-matlab-02--product-attribution).

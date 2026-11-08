@@ -23,3 +23,10 @@ Normal accepted sources produce located facts and no failure diagnostic.
 Unmatched literal dependencies remain evidence on their source nodes. The
 normal graph writer owns I/O failures and retry; the source reader does not
 publish or roll back graph files.
+
+Product attribution is additive and uses the same admitted facts and
+publication guard. Unmatched and shadowed names do not emit product claims
+or errors. The original saved reference remains available when present.
+No catalog download, license, tool installation, or native analysis is
+needed at runtime. Malformed input and write failures follow the existing
+diagnostics and retention policy above.

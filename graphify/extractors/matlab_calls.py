@@ -43,19 +43,29 @@ def _record_calls(
     ancestors = [workspaces[a.scope_key] for a in _lexical_scopes(scope)]
     if len(name) > 256 or any(a.uncertain or head in a.bindings for a in ancestors):
         return
+    # An assigned built-in load returns data without injecting its fields.
+    # Product matching must still rule out a shadowed implementation. Keep
+    # the previous conservative local call edges for load-bearing scopes.
+    assigned_load = any(a.assigned_load for a in ancestors)
+    if assigned_load and (
+        "load" in facts.class_member_names or _same_file_candidates(scope, facts, "load")
+        or any("load" in a.bindings or "load" in a.imports or a.wildcard_import for a in ancestors)
+    ):
+        return
+    load_evidence = {"matlab_assigned_load": True} if assigned_load else {}
     # A declaration's full syntax is scanned before any call binds. MATLAB's
     # explicit imports apply throughout the function, including earlier lines.
     if name == head:
         imported = workspace.imports.get(name)
         if imported is not None:
             if len(imported) == 1:
-                facts.add_call(scope, next(iter(imported)), site.syntax, matlab_explicit_import=True)
+                facts.add_call(scope, next(iter(imported)), site.syntax, matlab_explicit_import=True, **load_evidence)
             return
         if any(name in a.imports for a in ancestors[1:]):
             return
         local = _same_file_candidates(scope, facts, name)
         if local:
-            if len(local) == 1:
+            if len(local) == 1 and not assigned_load:
                 target = local[0]
                 primary = target.record["metadata"]["matlab_primary"]
                 if not primary or target.name == facts.path.stem:
@@ -68,12 +78,18 @@ def _record_calls(
         if name in SIMULINK_APIS and site.model_name:
             facts.add_call(
                 scope, site.model_name, site.syntax, _matlab_model_reference=True,
-                matlab_api=name,
+                matlab_api=name, **load_evidence,
             )
             return
     if name != head and any(head in ancestor.imports for ancestor in ancestors):
         return
-    facts.add_call(scope, name, site.syntax)
+    # Keep the existing qualified lookup, but avoid vendor claims when dot
+    # syntax could refer to a same-file function or a class member instead.
+    product_blocked = name != head and (
+        bool(_same_file_candidates(scope, facts, head)) or head in facts.class_member_names
+        or any(a.wildcard_import for a in ancestors)
+    )
+    facts.add_call(scope, name, site.syntax, matlab_product_blocked=product_blocked, **load_evidence)
 
 
 def collect_matlab_calls(facts: MatlabFacts) -> None:

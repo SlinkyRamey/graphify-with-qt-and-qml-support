@@ -6,6 +6,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from graphify.extractors.matlab_ast import IDENTIFIER, QUALIFIED
+from graphify.matlab_product_catalog import API_PRODUCTS
+from graphify.matlab_products import append_product
 
 
 def _source_path(value: object, root: Path | None) -> Path | None:
@@ -60,6 +62,7 @@ class _MatlabCorpus:
         self.root = root.absolute() if root is not None else None
         self.nodes: dict[str, dict] = {}
         self.targets: dict[tuple[Path | None, str], list[dict]] = defaultdict(list)
+        self.files: set[tuple[Path | None, str]] = set()
         for node in nodes:
             meta = node.get("metadata")
             if node.get("_origin") != "ast" or not isinstance(meta, dict) or meta.get("language") != "matlab":
@@ -70,6 +73,12 @@ class _MatlabCorpus:
                 continue
             self.nodes[nid] = node
             kind = meta.get("kind")
+            if kind == "matlab_file" and IDENTIFIER.fullmatch(path.stem):
+                # A script or a file with a different primary declaration
+                # can still occupy the name used by a vendor function.
+                file_key = _lookup_key(path, "matlab_class", path.stem, self.root)
+                if file_key is not None:
+                    self.files.add((file_key[0], file_key[1].casefold()))
             if kind not in {"matlab_class", "matlab_function"} or meta.get("matlab_primary") is not True:
                 continue
             name = meta.get("matlab_name")
@@ -89,6 +98,17 @@ class _MatlabCorpus:
                 return private
         return self.targets.get((None, name), [])
 
+    def shadows_product(self, caller: dict, name: str) -> bool:
+        path = _source_path(caller.get("source_file"), self.root)
+        if path is None:
+            return True
+        # Match exact qualified candidates and their class/namespace prefixes.
+        # A case-only file collision is ambiguous on case-insensitive hosts.
+        parts = name.casefold().split(".")
+        return (path.parent, parts[0]) in self.files or any(
+            (None, ".".join(parts[:length])) in self.files for length in range(1, len(parts) + 1)
+        )
+
 
 def _edge(caller: dict, target: dict, relation: str, location: str, context: str) -> dict:
     return {
@@ -100,7 +120,8 @@ def _edge(caller: dict, target: dict, relation: str, location: str, context: str
 
 
 def resolve_matlab_calls(
-    nodes: list[dict], edges: list[dict], raw_calls: list[dict], *, root: Path | None = None
+    nodes: list[dict], edges: list[dict], raw_calls: list[dict], *,
+    root: Path | None = None, product_nodes: list[dict] | None = None,
 ) -> list[dict]:
     """Add eligible MATLAB edges and return unshadowed Simulink API witnesses."""
     corpus = _MatlabCorpus(nodes, root)
@@ -127,6 +148,10 @@ def resolve_matlab_calls(
             continue
         if _source_path(raw.get("source_file"), corpus.root) != _source_path(caller["source_file"], corpus.root):
             continue
+        if product_nodes is not None:
+            _record_api_product(corpus, caller, raw, product_nodes, edges)
+        if raw.get("matlab_assigned_load"):
+            continue
         if raw.get("_matlab_model_reference") is True:
             api = raw.get("matlab_api")
             if isinstance(api, str) and not corpus.candidates(caller, api):
@@ -151,3 +176,19 @@ def resolve_matlab_calls(
                     and matches[0]["metadata"]["kind"] == "matlab_class"):
                 append(_edge(caller, matches[0], "inherits", base["source_location"], "matlab_corpus"))
     return model_references
+
+
+def _record_api_product(corpus: _MatlabCorpus, caller: dict, raw: dict,
+                        nodes: list[dict], edges: list[dict]) -> None:
+    """Use catalog spelling only after the parsed and corpus shadows are known."""
+    symbol = raw.get("matlab_api") if raw.get("_matlab_model_reference") is True else raw.get("callee")
+    column = raw.get("matlab_column")
+    if not isinstance(symbol, str) or type(column) is not int or column < 1:
+        return
+    product = API_PRODUCTS.get(symbol)
+    if product is None or raw.get("matlab_product_blocked") or corpus.shadows_product(caller, symbol):
+        return
+    if raw.get("matlab_assigned_load") and corpus.shadows_product(caller, "load"):
+        return
+    evidence = "import" if raw.get("matlab_import") is True else "api"
+    append_product(nodes, edges, caller, product, evidence, symbol, raw["source_location"], column=column)

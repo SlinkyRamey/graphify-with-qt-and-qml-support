@@ -71,6 +71,46 @@ types, active variants, evaluated dictionary values, arbitrary MATLAB path
 precedence or numerical behavior. Use a root-scoped update for these project IDs.
 See the [diagnostic contract](ERRORS.md) and [acceptance matrix](PLAN.md).
 
+## ADR-MATLAB-003 — Locate reviewed product evidence offline
+
+The R2026b catalog names documented products and their selected API or saved
+library spellings. The MATLAB resolver applies it after its existing lexical
+and corpus lookup gates. Eligible local files include scripts and exact
+qualified paths, with conservative case-folded shadow checks to account for
+case-insensitive hosts. The saved Simulink pass uses the exact SourceBlock
+value and declines product attribution if the project supplies the library
+root. A Stateflow product witness requires both the saved Chart type and
+verified chart ownership. The ordinary MATLAB Function block does not
+establish a Stateflow product dependency.
+
+A direct assignment from MATLAB's `load` returns data to the assigned
+variable and preserves other source-visible bindings. No-output or uncertain
+workspace-changing calls retain the conservative guard.
+[MATLAB load forms](https://www.mathworks.com/help/matlab/ref/load.html)
+
+Each observed use attaches a source-owned `uses_matlab_product` witness.
+MATLAB calls and explicit imports preserve parsed line and byte column.
+Library and chart witnesses preserve the archive member and line. A library
+witness also carries the UTF-8 literal as `symbol_base64`, so saved
+line breaks survive display sanitation. IDs
+incorporate the owner, match and site so distinct evidence survives both
+ordinary and source-relationship storage. The new MATLAB-only cache epoch
+retires entries without call columns and shadow evidence. The Simulink
+syntax cache and existing IDs stay compatible. Product attribution runs
+after cache read and uses the existing cohort refresh and rejection policy.
+
+This catalog is a positive evidence profile. Known shared implementations
+with an explicit documented association carry a shared ownership marker.
+Unqualified ambiguous names, generic object methods, runtime dispatch,
+dynamic MATLAB paths and uncataloged names are outside that evidence.
+A positive match does not determine availability,
+licensing, or whether a simulation actually exercises the site. The
+independent native oracle is used only in validation. MathWorks also
+documents limits around shared libraries and missing toolboxes.
+[Dependency Analyzer](https://www.mathworks.com/help/matlab/ref/dependencyanalyzer-app.html) ·
+[Per-file dependency analysis](https://www.mathworks.com/help/simulink/slref/dependencies.toolboxdependencyanalysis.html) ·
+[MATLAB file and product analysis](https://www.mathworks.com/help/matlab/ref/matlab.codetools.requiredfilesandproducts.html)
+
 ## Shared seams
 
 The extractor facade retains dispatch, aggregation and source-tier stamping.

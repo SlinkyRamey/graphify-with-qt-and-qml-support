@@ -152,6 +152,13 @@ graphify extract path/to/project --code-only
 
 See the [supported source profiles and limits](docs/matlab/DESIGN.md).
 
+Product witnesses identify cataloged MathWorks APIs and saved library paths,
+with their source locations and the catalog release. Query by product name to
+find the corresponding calls or blocks. Run `graphify update .` in an existing
+MATLAB or Simulink project to add the witnesses to its graph. The initial R2026b
+profile lists 12 products.
+[Product attribution scope](docs/matlab/PLAN.md#inc-matlab-02--product-attribution)
+
 ## Benchmarks: 0.497 recall@10, 0 LLM credits
 
 | Benchmark | Metric | graphify | Field |
