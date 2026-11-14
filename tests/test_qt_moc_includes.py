@@ -84,6 +84,7 @@ def test_req_qml008_ac06_unsupported_moc_include_has_a_source_diagnostic(tmp_pat
     with pytest.raises(QtCppError) as caught:
         read_cpp(path, tmp_path)
     assert caught.value.code == "QT_CPP_SYNTAX"
+    assert caught.value.span is not None
     assert caught.value.span["start_row"] == source.count("\n") - 1
 
 
