@@ -12,6 +12,25 @@ import yaml
 from tests import qml_ci
 
 
+def test_req_core006_ac01_ac04_upstream101_native_controls_are_selected(tmp_path):
+    """Core-grammar and platform-cache corrections must execute in native lanes."""
+    names = {
+        "test_python_bare_call_not_enclosing_method.py",
+        "test_rust_macro_argument_calls.py", "test_rust_scoped_call_resolution.py",
+        "test_go_method_value_indirect_calls.py", "test_go_package_var_type_refs.py",
+        "test_cache_windows_case_4925.py",
+    }
+    folder = tmp_path / "tests"
+    folder.mkdir()
+    for name in names | {"test_qt_upstream101_public.py", "test_unrelated.py"}:
+        (folder / name).write_text("def test_public(): pass\n", encoding="utf-8")
+    selected = {Path(path).as_posix() for path in qml_ci.selected_tests(tmp_path)}
+    assert {"tests/" + name for name in names} <= selected
+    assert "tests/test_qt_upstream101_public.py" in selected
+    assert "tests/test_unrelated.py" not in selected
+    assert qml_ci.selected_tests(tmp_path, artifact_only=True) == ["tests/test_qml_wheel_artifact.py"]
+
+
 @dataclass
 class Invocation:
     """Retain only public command/profile facts from the subprocess boundary."""

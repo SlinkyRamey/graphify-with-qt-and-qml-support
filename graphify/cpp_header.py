@@ -71,18 +71,22 @@ def _code(source: bytes) -> bytes:
     return bytes(result)
 
 
-def is_cpp_header(path: Path) -> bool:
+def is_cpp_header(path: Path, head: bytes | None = None) -> bool:
     """Recognize supported visible declarations; uncertain headers keep C dispatch.
 
     This admission hint supplies no type/member or SDK authority. Objective-C
     selection remains owned by the facade and precedes this C++ check.
     """
-    try:
-        with path.open("rb") as stream:
-            source = stream.read(256 * 1024)
-    except OSError:
-        return False
-    code = _code(source)
+    # Dispatch can share a prefix with Objective-C admission; standalone
+    # callers still own one bounded read. An empty prefix is a valid read.
+    sniff_bytes = 256 * 1024
+    if head is None:
+        try:
+            with path.open("rb") as stream:
+                head = stream.read(sniff_bytes)
+        except OSError:
+            return False
+    code = _code(head[:sniff_bytes])
     if _DECLARATION.search(code) is not None:
         return True
     from graphify.cpp_header_declarations import has_cpp_declaration_hint

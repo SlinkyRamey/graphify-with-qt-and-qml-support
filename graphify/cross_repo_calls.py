@@ -310,6 +310,8 @@ def link_cross_repo_member_calls(merged: "nx.Graph") -> int:
                     logical_endpoints(merged, caller, target, data) == (caller, target) for data in existing)
                     if is_source_graph(merged) else bool(existing)):
                 continue
+            metadata = entry.get("metadata")
+            conditions = metadata.get("cpp_conditions") if lang == "cpp" and isinstance(metadata, dict) else None
             add_source_relationship(merged, caller, target, dict(
                 relation="calls",
                 context="cross_repo",
@@ -326,6 +328,7 @@ def link_cross_repo_member_calls(merged: "nx.Graph") -> int:
                 _src=caller,
                 _tgt=target,
                 **{CROSS_REPO_CALL_MARKER: True},
+                **({"metadata": {"cpp_conditions": conditions}} if isinstance(conditions, list) and conditions else {}),
             ))
             added += 1
     return added

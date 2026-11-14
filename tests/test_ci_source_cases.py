@@ -114,7 +114,7 @@ def test_req_qml014_ac04_source_gate_rejects_unreviewed_matrix_growth(collected_
 
 
 @pytest.mark.parametrize("outcome", ["missing", "skipped"])
-@pytest.mark.parametrize("old_schema", [33, 39])
+@pytest.mark.parametrize("old_schema", [33, 39, 40])
 @pytest.mark.parametrize("old_version", ["0.9.74", "0.9.76", "0.9.92"])
 def test_req_qml003_ac04_qml018_ac05_current_migrations_require_individual_passes(
         collected_cases, old_version, old_schema, outcome):

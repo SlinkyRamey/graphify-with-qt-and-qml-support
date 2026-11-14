@@ -1,11 +1,12 @@
 """#1669 — affected <Class> must reach callers that bind to the class's method
 nodes (post-#1634 method-granularity resolution), by seeding the reverse walk
-with the root's member nodes (one method/contains hop). method/contains stay out
-of the general relation-filtered walk, so no forward noise is added elsewhere.
+with the root's member subtree. Method/contains stay out of the general
+relation-filtered walk, so no forward noise is added elsewhere.
 """
 from __future__ import annotations
 
 import networkx as nx
+import pytest
 
 from graphify.affected import affected_nodes
 
@@ -59,3 +60,26 @@ def test_class_level_caller_still_works():
     g.add_edge("caller", "svc", relation="references")
     hits = {h.node_id for h in affected_nodes(g, "svc", depth=2)}
     assert "caller" in hits
+
+
+@pytest.mark.parametrize("directed", [False, True])
+@pytest.mark.parametrize("partial_membership", [False, True])
+def test_file_affected_reaches_nested_method_callers(directed, partial_membership):
+    """Only a complete logical member chain seeds the method's incoming caller."""
+    g = nx.DiGraph() if directed else nx.Graph()
+    # Undirected iteration sees each descendant before its owner.
+    for nid, label in [
+        ("proc_call", ".call()"), ("proc", "Processor"), ("file_p", "processor.py"),
+        ("runner_run", ".run()"), ("runner", "Runner"),
+    ]:
+        g.add_node(nid, label=label)
+    g.add_edge("file_p", "proc", relation="contains", _src="file_p", _tgt="proc")
+    g.add_edge("proc", "proc_call", relation="method", _src="proc", _tgt="proc_call")
+    g.add_edge("runner", "runner_run", relation="method", _src="runner", _tgt="runner_run")
+    g.add_edge("runner_run", "proc_call", relation="calls", _src="runner_run", _tgt="proc_call")
+    if partial_membership:
+        del g.edges["proc", "proc_call"]["_tgt"]
+
+    hits = affected_nodes(g, "file_p", depth=1)
+    expected = [] if partial_membership else [("runner_run", 1, "calls")]
+    assert [(hit.node_id, hit.depth, hit.via_relation) for hit in hits] == expected

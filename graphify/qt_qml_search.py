@@ -1,8 +1,7 @@
 """Bounded semantic search views for Qt/QML facts; identities stay opaque."""
 from __future__ import annotations
 
-from graphify.extractors.qml_facts import qml_metadata
-from graphify.extractors.qt_cpp_facts import qt_metadata
+from graphify.qt_metadata_transport import qml_metadata, qt_metadata
 
 SEARCH_NAMESPACE = "graphify_qt_qml"
 _FIELDS = {"kind", "raw_name", "raw_type", "type_name", "class_name", "signature", "uri",

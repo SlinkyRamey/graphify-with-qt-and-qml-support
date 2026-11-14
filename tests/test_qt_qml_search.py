@@ -9,7 +9,13 @@ import pytest
 from graphify.extractors.qml_facts import encode_metadata
 from graphify.extractors.qt_cpp_facts import encode_qt
 from graphify.qt_qml_search import SEARCH_NAMESPACE, search_attributes
-from graphify.serve import _node_attributes_text, _pick_scored_endpoint, _query_graph_text, _score_nodes
+from graphify.serve import (
+    _node_attributes_text,
+    _pick_scored_endpoint,
+    _query_graph_text,
+    _score_nodes,
+    _shortest_path_text,
+)
 
 
 def node():
@@ -106,6 +112,25 @@ def test_fuzzy_endpoint_still_prefers_full_token_coverage():
     graph.add_node("summary", label="Rejection Summary")
     graph.add_node("judge", label="Degenerate Reject-Everything Judge")
     assert _pick_scored_endpoint(graph, [(1000, "summary"), (1, "judge")], "Reject-everything judge") == "judge"
+
+
+def test_shortest_path_uses_public_qt_metadata_without_guessing_unknown_names():
+    """The endpoint scorer can route through a projected member name and role."""
+    graph = nx.DiGraph()
+    graph.add_node("native", **node())
+    graph.add_node("distractor", label="Invokable notes")
+    graph.add_node("sink", label="Sink")
+    graph.add_edge("native", "sink", relation="calls", confidence="EXTRACTED")
+    graph.add_edge("distractor", "sink", relation="references", confidence="EXTRACTED")
+
+    result = _shortest_path_text(graph, {"source": "fetch invokable", "target": "sink"})
+    assert "Shortest path (1 hops)" in result
+    assert "--calls [EXTRACTED]-->" in result
+
+    for source in ("fetch invokable fabricated", "fetch invokable hidden_owner_93"):
+        assert _shortest_path_text(graph, {"source": source, "target": "sink"}) == (
+            f"No node matching source '{source}' found."
+        )
 
 
 def test_query_edge_rendering_is_identical_for_reversed_actual_graph_insertion(tmp_path):

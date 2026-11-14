@@ -65,14 +65,29 @@ def test_req_qml022_ac06_local_and_class_member_calls_keep_their_source_roles(tm
 
 
 def test_req_qml022_ac02_constructor_local_uses_existing_constructor_owner(tmp_path):
-    """Existing C# constructor bodies belong to their type; no invented constructor node is needed."""
+    """Each constructor owns only its source local function and retains class lookup."""
     path = tmp_path / "Data.cs"
-    path.write_text("class Holder{public Holder(){void Local(){} Local();}}")
-    result = extract_csharp(path)
-    (local,) = local_functions(result)
-    owner = next(node["id"] for node in result["nodes"] if node["label"] == "Holder")
-    assert any(edge["source"] == owner and edge["target"] == local["id"] and edge["relation"] == "contains" for edge in result["edges"])
-    assert any(edge["source"] == owner and edge["target"] == local["id"] for edge in calls(result))
+    path.write_text("class Holder{\npublic Holder(){void Local(){Helper();} Local();}\n"
+                    "public Holder(int n){void Local(){Helper();} Local();}\nvoid Helper(){}\n}\n"
+                    "class Other { void Helper(){} }\n", encoding="utf-8")
+    for result in (extract_csharp(path), extract([path], root=tmp_path, cache_root=tmp_path, parallel=False)):
+        locals_by_line = {node["source_location"]: node["id"] for node in local_functions(result)}
+        assert set(locals_by_line) == {"L2", "L3"} and len(set(locals_by_line.values())) == 2
+        constructors = {node["source_location"]: node["id"] for node in result["nodes"]
+                        if node.get("metadata", {}).get("kind") == "constructor"}
+        assert set(constructors) == set(locals_by_line)
+        holder = next(node["id"] for node in result["nodes"] if node["label"] == "Holder")
+        assert {edge["target"] for edge in result["edges"] if edge["source"] == holder
+                and edge["relation"] == "method"} >= set(constructors.values())
+        helper = next(node["id"] for node in result["nodes"] if node["source_location"] == "L4"
+                      and node["label"].endswith(".Helper()"))
+        pairs = {(constructors[line], local) for line, local in locals_by_line.items()}
+        assert {(edge["source"], edge["target"]) for edge in result["edges"]
+                if edge["relation"] == "contains" and edge["target"] in locals_by_line.values()} == pairs
+        assert {(edge["source"], edge["target"]) for edge in calls(result)
+                if edge["target"] in locals_by_line.values()} == pairs
+        assert {(edge["source"], edge["target"]) for edge in calls(result)
+                if edge["source"] in locals_by_line.values()} == {(local, helper) for local in locals_by_line.values()}
 
 
 def test_req_qml022_ac02_file_scoped_namespace_is_part_of_local_source_identity(tmp_path):

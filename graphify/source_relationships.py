@@ -17,7 +17,7 @@ from typing import TypeGuard
 
 import networkx as nx
 from graphify.graph_direction import logical_endpoints as accepted_endpoints
-from graphify.source_relationship_evidence import validate_observations, validate_parent_cohort, validate_transport_cohort
+from graphify.source_relationship_evidence import graph_parent_record, validate_observations, validate_parent_cohort, validate_transport_cohort
 
 FIELD = "graphify_source_relationships"
 _CONTRACT = {"contract_version": 1}
@@ -210,17 +210,22 @@ def adopt_transport(data: dict) -> dict:
 def prepare_source_links(graph, original_links, *, add):
     """Compose one accepted logical arc per key before accounting or publication."""
     nodes = [{**data, "id": key} for key, data in graph.nodes(data=True)]
-    current = [{**data, "source": source, "target": target} for source, target, data in graph.edges(data=True)]
+    # Validate the complete raw alternate view before any graph-derived copy
+    # can canonicalize an already accepted undirected storage orientation.
+    selected = None
+    if original_links is not None:
+        if not isinstance(original_links, (list, tuple)):
+            raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid original source links")
+        selected = list(original_links)
+        validate_parent_cohort(nodes, selected, directed=graph.is_directed(), identity=_identity, allow_missing=True)
+    current = [graph_parent_record(source, target, data, directed=graph.is_directed())
+               for source, target, data in graph.edges(data=True)]
     validate_parent_cohort(nodes, current, directed=graph.is_directed(), identity=_identity)
     identities = [storage_key(*logical_endpoints(graph, edge["source"], edge["target"], edge), edge["relation"]) for edge in current]
     if len(identities) != len(set(identities)):
         raise ValueError("SOURCE_RELATIONSHIPS_INVALID: duplicate source relationship storage identity")
-    if original_links is None:
+    if selected is None:
         return None
-    if not isinstance(original_links, (list, tuple)):
-        raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid original source links")
-    selected = list(original_links)
-    validate_parent_cohort(nodes, selected, directed=graph.is_directed(), identity=_identity, allow_missing=True)
     return prepare_source_edges([edge for edge in selected if edge["source"] in graph and edge["target"] in graph],
                                 directed=graph.is_directed(), add=add)
 
@@ -237,12 +242,11 @@ def prepare_source_edges(edges, *, directed, add):
         raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid graph mode flag")
     graph = make_source_graph(directed=directed, graph_metadata={FIELD: dict(_CONTRACT)})
     for edge in edges:
-        if (not isinstance(edge, dict) or not all(_identity(edge.get(key)) for key in ("source", "target"))
-                or not isinstance(edge.get("relation"), str) or not edge["relation"].strip()):
-            raise ValueError("SOURCE_RELATIONSHIPS_INVALID: invalid source relationship link")
+        validate_parent_cohort([], [edge], directed=directed, identity=_identity, allow_missing=True)
         validate_observations([edge])
         add(graph, edge["source"], edge["target"], edge)
-    return [{**data, "source": source, "target": target} for source, target, data in graph.edges(data=True)]
+    return [graph_parent_record(source, target, data, directed=graph.is_directed())
+            for source, target, data in graph.edges(data=True)]
 
 
 def inherit_source_profile(data, policy):

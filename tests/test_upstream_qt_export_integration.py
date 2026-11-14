@@ -2,15 +2,21 @@
 from __future__ import annotations
 
 import copy
+import errno
 import json
+import os
+from pathlib import Path
 
 import networkx as nx
 import pytest
 
 import graphify.__main__ as mainmod
+from graphify.build import build_from_json, build_merge
 from graphify.export import to_json
 from graphify.extractors.qml_facts import qml_metadata
 from graphify.paths import load_node_link_graph
+from graphify.source_relationships import is_source_graph
+from tests.source_observation_helpers import observations, produce, reference, state
 from tests.test_qt_json_direction import actual_graph, damage
 
 
@@ -98,3 +104,58 @@ def test_req_qml_018_ac04_real_recluster_keeps_parallel_and_qml_links(tmp_path, 
         assert current["links"] == previous["links"]
         assert current["built_at_commit"] == "fixed"
         assert "Done -" in capsys.readouterr().out
+
+
+def test_req_qml014_ac04_typed_semantic_replacement_retains_retry_authority(tmp_path, monkeypatch, capsys):
+    """An accepted source graph can replace one document without excusing another."""
+    raw = produce(tmp_path)
+    raw["nodes"].extend([
+        {"id": "release_old", "label": "Old release", "file_type": "document", "source_file": "Release.md"},
+        {"id": "guide", "label": "Migration guide", "file_type": "document", "source_file": "Guide.md"},
+    ])
+    output = tmp_path / "graph.json"
+    baseline = build_from_json(raw, root=tmp_path)
+    assert is_source_graph(baseline)
+    assert to_json(baseline, {}, str(output), built_at_commit="fixed")
+    accepted, stamp = output.read_bytes(), output.stat().st_mtime_ns
+
+    chunk = {"nodes": [
+        {"id": "release_new", "label": "New release", "file_type": "document", "source_file": "Release.md"},
+    ], "edges": []}
+    graph = build_merge([chunk], output, dedup=False, root=tmp_path)
+    assert is_source_graph(graph)
+    assert graph.graph["_replaced_sources"] == ["Release.md"]
+    guide = dict(graph.nodes["guide"])
+    graph.remove_node("guide")
+    assert not to_json(graph, {}, str(output), built_at_commit="fixed")
+    diagnostic = capsys.readouterr().err
+    assert "saved semantic node(s) are missing from the new graph: guide" in diagnostic
+    assert "release_old" not in diagnostic
+    assert graph.graph["_replaced_sources"] == ["Release.md"]
+    assert output.read_bytes() == accepted and output.stat().st_mtime_ns == stamp
+    graph.add_node("guide", **guide)
+
+    # Fail the actual atomic replace, retaining both the old product and all
+    # validated accounting needed for an identical retry.
+    before = state(graph)
+    replace = os.replace
+
+    def fail_graph_replace(source, target):
+        if Path(str(target).removeprefix("\\\\?\\")).resolve() == output.resolve():
+            raise OSError(errno.EIO, "injected typed semantic graph replace failure")
+        return replace(source, target)
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(os, "replace", fail_graph_replace)
+        with pytest.raises(OSError, match="injected typed semantic graph replace failure"):
+            to_json(graph, {}, str(output), built_at_commit="fixed")
+    assert state(graph) == before
+    assert output.read_bytes() == accepted and output.stat().st_mtime_ns == stamp
+
+    assert to_json(graph, {}, str(output), built_at_commit="fixed")
+    payload = json.loads(output.read_bytes())
+    assert "_replaced_sources" not in graph.graph and "_replaced_sources" not in payload["graph"]
+    loaded = load_node_link_graph(output)
+    assert is_source_graph(loaded)
+    assert {"release_new", "guide"} <= set(loaded) and "release_old" not in loaded
+    assert {item["context"] for item in observations(reference(loaded))} == {"field", "generic_arg"}
