@@ -66,11 +66,19 @@ _COMMANDS = {
 }
 
 
-@pytest.fixture
-def graph_dir(tmp_path):
+@pytest.fixture(params=["generic", "qt"])
+def graph_dir(tmp_path, request):
     out = tmp_path / "graphify-out"
     out.mkdir()
-    (out / "graph.json").write_text(json.dumps(_GRAPH), encoding="utf-8")
+    data = json.loads(json.dumps(_GRAPH))
+    if request.param == "qt":
+        # A persisted native fact exercises semantic metadata decoding and
+        # affected ownership. The subprocess must still load no extractors.
+        from graphify.extractors.qt_cpp_facts import encode_qt
+
+        data["nodes"][3]["metadata"] = {"qt": encode_qt({"kind": "member", "raw_name": "executor"})}
+        data["links"][1].update(confidence="EXTRACTED", metadata={"qt": encode_qt({"kind": "member"})})
+    (out / "graph.json").write_text(json.dumps(data), encoding="utf-8")
     return tmp_path
 
 

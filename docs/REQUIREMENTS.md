@@ -919,12 +919,17 @@ An admitted C# constructor or source-owned indexer attributes supported body
 calls to the exact owner, preserving overload and explicit-interface boundaries.
 Supported C# conditional declarations retain their original occurrence and
 uncertainty when parser recovery masks directives.
+Supported UTF-16, UTF-32 and Windows-1252 C# inputs use the shared deterministic
+decode before recovery and produce the same modeled graph as UTF-8.
 `REQ-CORE-006-AC01`
 
 2 - Graph endpoint aliases obey the source language and the authoritative caller
 frame, including native ownership and external-target admission. Full build,
 export/reload and incremental reconciliation agree; conflicting or invalid typed
 inputs reject without losing prior accepted graph bytes or failure accounting.
+Query, explain, path and affected read existing generic and Qt/QML graph facts
+without loading the source parser package. Literal Qt/QML metadata retains the
+same bounds, validation and lookup behavior in the read-only view.
 `REQ-CORE-006-AC02`
 
 3 - AST replacement preserves genuinely independent saved semantic evidence,

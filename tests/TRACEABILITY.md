@@ -6220,3 +6220,18 @@ candidate. The existing combined adoption, rejection/retry and initial-repeat
 cases exercise the constructor emission owner and the resolved signal separately.
 All 157 focused cases passed after that correction, including all 22 hosted
 identities and the previous native class, constructor and uncertainty controls.
+
+Linux Python 3.12 at `706243d6` exposed a separate four-case C# decoding
+regression. The C# extractor now uses the shared decoder before optional parser
+recovery. The production encoding and conditional/metadata selection passed
+163 cases, including all four original failures and Java/Python controls.
+`test_skill_code_only_incremental_update.py` now leaves sidecar creation to the
+fixture. A missing trusted root reaches the rendered program, keeps the prior
+products, creates no root/cache/AST, then recovers and repeats after an explicit
+marker write. Both module cases passed with the original rendered program.
+
+Under REQ-CORE-006-AC02, the four hosted read-only commands were reproduced
+loading the extractor package through Qt/QML metadata readers. The same
+validated literal decoders now live in a parser-independent transport module.
+The 190-case focused selection passes with the original no-import checks and
+extra saved Qt fact coverage, alongside typed transport and rejection tests.

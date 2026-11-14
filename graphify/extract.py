@@ -4396,7 +4396,9 @@ def _blank_csharp_preprocessor(source: bytes, root) -> tuple[bytes | None, tuple
 def extract_csharp(path: Path) -> dict:
     """Extract C# type declarations, methods, namespaces, and usings from a .cs file."""
     try:
-        source = path.read_bytes()
+        # Both compatibility passes and the parser use the same UTF-8 byte view.
+        # The shared reader leaves valid UTF-8 bytes, including CRLF, intact.
+        source = _read_source_bytes(path)
     except OSError:
         return _extract_generic(path, _CSHARP_CONFIG)
     source_override = _normalize_csharp_verbatim_interpolation(source) or source
