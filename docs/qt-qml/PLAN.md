@@ -6015,3 +6015,21 @@ inference remain outside this increment.
 Exit requires the named local regressions, adjacent native/QML controls and a
 fresh AST-only repository graph. The fork-default PR provides hosted coverage
 for the combined source and upstream sync on the existing matrix.
+
+### INC-QML-136 — Sync the fork with Graphify 0.9.109
+
+Integrate `d4a5b323ef8501518b82c58a05fe21b35ce24992` and the 21 incoming commits
+after the fork's 0.9.108 merge at `7254f6b7c5b451e4cee1ebd0d013e5ceea784b43`.
+The same branch presents INC-QML-135 and the merged upstream history for
+review against fork `v8`.
+
+| Boundary | Required acceptance |
+| --- | --- |
+| Native and generic source | Preserve literal IDs, declaration/body/include provenance and C# interface dispatch. Verify variadic and Kotlin/Swift/Dart controls (REQ-CORE-006-AC01, REQ-QML-022-AC02/AC06). |
+| Update and source coverage | Retain the last accepted AST slice and structured Qt/QML rejection for failed sources. Keep undispatched/unread semantic evidence out of completed coverage and retry unverified inputs (REQ-CORE-006-AC03/AC04, REQ-QML-011-AC04). |
+| Packaging and migration | Advance both distinct schema-46 producers to AST 47 and retain Qt policy 34. Sync the root lock version, regenerate skills, and run local and hosted checks on the existing profiles (REQ-CORE-006-AC04, REQ-QML-018-AC02). |
+
+During composition, the former normalized-member veto blocked an incoming
+regression for a distinct `Run`/`_Run` pair. The corrected source gate rejects
+shared carriers while permitting exact, separately allocated declaration/body
+pairs through the existing signature and include witnesses.

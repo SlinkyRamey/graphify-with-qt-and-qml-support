@@ -929,6 +929,9 @@ Supported C# conditional declarations retain their original occurrence and
 uncertainty when parser recovery masks directives.
 Supported UTF-16, UTF-32 and Windows-1252 C# inputs use the shared deterministic
 decode before recovery and produce the same modeled graph as UTF-8.
+Separated C++ method spellings keep independent members and actual endpoints.
+Only an exact signature/owner pair with accepted include evidence can fold; a
+colliding field or unresolved identity cannot authorize a fold.
 `REQ-CORE-006-AC01`
 
 2 - Graph endpoint aliases obey the source language and the authoritative caller
@@ -947,6 +950,10 @@ slice-complete checkpoints cannot silently certify omitted accepted input.
 An explicitly replaced source can retire its old semantic nodes. Unrelated
 semantic loss still rejects and a failed typed export preserves its in-memory
 replacement accounting for retry. Successful output omits transient accounting.
+Failed generic source extraction keeps its last accepted AST slice and does
+not claim replacement authority. Native Qt/QML failures also retain their
+structured reasons for rejection. Unread semantic inputs remain pending and
+do not supply guessed facts.
 `REQ-CORE-006-AC03`
 
 4 - The current AST namespace invalidates both predecessor producer families at
@@ -971,6 +978,10 @@ INC-QML-134 implements the additional 0.9.108 composition boundaries above.
 The combined raw AST namespace is 46, with fork 41 and upstream 45 retired.
 Exact-revision package, hosted and resulting-branch verification have separate
 evidence and status in the delivery record.
+
+INC-QML-136 implements the 0.9.109 composition boundaries. AST 47 retires
+both distinct schema-46 producers; Qt policy 34 covers the mechanism changes
+from INC-QML-135. Hosted verification applies to the reviewed integration SHA.
 
 ## Current-upstream integration profile
 

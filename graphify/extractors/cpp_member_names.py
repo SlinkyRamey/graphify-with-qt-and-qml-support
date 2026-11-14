@@ -56,7 +56,7 @@ class CppMemberNames:
         self.identities = identities
         source, stem = identities.source, identities.stem
         entries, groups = {}, defaultdict(lambda: defaultdict(set))
-        names = defaultdict(set)
+        names, data_names = defaultdict(set), defaultdict(set)
         reserved = set(reserved_ids)
         reserved.update(record["id"] for record in identities.records.values())
         reserved.update(record["id"] for record in identities.body_owners.values())
@@ -65,7 +65,7 @@ class CppMemberNames:
         # these IDs reject data collisions and never rewrite the constructor.
         reserved.update(constructor_candidate_ids(functions.root, functions.source, identities))
 
-        def retain(syntax, name, container, *, definition=False, prefixes=(), domain=None):
+        def retain(syntax, name, container, *, is_method=True, definition=False, prefixes=(), domain=None):
             record = identities.record(container) if container is not None else None
             owner_name = _read_text(container.child_by_field_name("name"), source) if container is not None and container.child_by_field_name("name") else ""
             # Constructors already have a signature-owned ID domain. A member
@@ -80,6 +80,8 @@ class CppMemberNames:
             entries[syntax.id] = _Member(name, domain, record, definition, tuple(prefixes))
             groups[domain][normalize_id(name)].add(name)
             names[domain].add(name)
+            if not is_method:
+                data_names[domain].add(name)
 
         for node in _walk(functions.root):
             if node.type == "field_declaration" or is_destructor_prototype(node, source):
@@ -89,7 +91,7 @@ class CppMemberNames:
                 for declarator in node.children_by_field_name("declarator"):
                     shape = member_declarator(declarator, source)
                     if shape is not None:
-                        retain(declarator, shape[0], container)
+                        retain(declarator, shape[0], container, is_method=shape[1])
             elif node.type == "function_definition":
                 declarator = node.child_by_field_name("declarator")
                 shape = member_declarator(declarator, source) if declarator is not None else None
@@ -125,6 +127,7 @@ class CppMemberNames:
         self.groups = {domain: {key: frozenset(value) for key, value in values.items()}
                        for domain, values in groups.items()}
         self.names = {domain: frozenset(value) for domain, value in names.items()}
+        self.data_names = {domain: frozenset(value) for domain, value in data_names.items()}
         self.reserved = frozenset(reserved)
         self._plans = {}
 
@@ -135,12 +138,22 @@ class CppMemberNames:
         names = self.names[domain]
         occupied = {owner_id} | {_make_id(owner_id, name) for name in names}
         plan = {}
+        # The upstream method rule keeps one unadorned spelling only when the
+        # group contains methods alone. Mixed fields/methods and case-only
+        # collisions keep the existing order-independent disambiguation.
+        plain_names = set()
+        for group in self.groups[domain].values():
+            if len(group) == 1:
+                plain_names.update(group)
+            elif group.isdisjoint(self.data_names.get(domain, ())):
+                unadorned = [name for name in group if not name.startswith(("_", "~")) and not name.endswith("_")]
+                if len(unadorned) == 1:
+                    plain_names.add(unadorned[0])
         # Sorting literal names only affects the vanishing digest-collision
         # tie; declaration order/lines never decide who retains a candidate.
         for name in sorted(names):
             normal = _make_id(owner_id, name)
-            if (len(self.groups[domain][normalize_id(name)]) == 1
-                    and normal != owner_id and normal not in self.reserved):
+            if name in plain_names and normal != owner_id and normal not in self.reserved:
                 plan[name] = normal
                 continue
             digest = hashlib.sha256(name.encode("utf-8")).hexdigest()

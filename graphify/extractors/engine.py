@@ -202,6 +202,25 @@ def _csharp_type_name_for_id(node, class_name: str) -> str:
     return f"{class_name}`{arity}" if arity else class_name
 
 
+def _csharp_explicit_interface_name(specifier: str) -> str:
+    """The interface's simple name from an explicit-implementation specifier.
+
+    ``Ns.IStore<int>.`` -> ``IStore``: no namespace, no type arguments, the
+    spelling an interface declaration's label has.
+    """
+    text = specifier.strip().rstrip(".")
+    depth = 0
+    out: list[str] = []
+    for ch in text:
+        if ch == "<":
+            depth += 1
+        elif ch == ">":
+            depth -= 1
+        elif depth == 0:
+            out.append(ch)
+    return "".join(out).rsplit(".", 1)[-1].strip()
+
+
 def _csharp_method_signature(node, source: bytes, params=None) -> tuple[str, dict]:
     """A C# method's parameter signature and the argument counts it accepts.
 
@@ -1554,7 +1573,8 @@ def _python_pre_scan_underscore_collisions(root_node, source: bytes, stem: str) 
 
 
 def _underscore_salted_nid(plain_nid: str, name: str, groups: dict[str, set[str]],
-                           private_prefixes: tuple[str, ...] = ("_",)) -> str:
+                           private_prefixes: tuple[str, ...] = ("_",),
+                           private_suffixes: tuple[str, ...] = ()) -> str:
     """Resolve a declaration's real node id against the collision map.
 
     Shared by the Python and C# pre-scans (#3302, #4415). A name with no
@@ -1569,11 +1589,14 @@ def _underscore_salted_nid(plain_nid: str, name: str, groups: dict[str, set[str]
     the Go extractor uses for its own case-only collision (#2779).
     ``private_prefixes`` widens what counts as non-public: JS/TS also marks
     members private with ``$`` and ``#`` (#4475).
+    ``private_suffixes`` does the same for a trailing mark: C++ spells a
+    private member ``find_`` as often as ``_find``.
     """
     names = groups.get(plain_nid)
     if not names or len(names) < 2:
         return plain_nid
-    public = [n for n in names if not n.startswith(private_prefixes)]
+    public = [n for n in names
+              if not n.startswith(private_prefixes) and not n.endswith(private_suffixes)]
     if len(public) == 1 and name == public[0]:
         return plain_nid
     salt = hashlib.sha1(name.encode("utf-8"), usedforsecurity=False).hexdigest()[:6]
@@ -1690,6 +1713,124 @@ def _java_member_nid(class_nid: str, member_node, name: str, source: bytes,
             text = _read_text(name_node, source) if name_node is not None else ""
             if text:
                 names.setdefault(_make_id(class_nid, text), set()).add(text)
+        groups = {nid: ns for nid, ns in names.items() if len(ns) >= 2}
+        groups_cache[key] = groups
+    return _underscore_salted_nid(_make_id(class_nid, name), name, groups)
+
+
+_KOTLIN_MEMBER_BODY_TYPES = ("class_body", "enum_class_body")
+
+
+def _kotlin_function_name(node, source: bytes) -> str:
+    name_node = node.child_by_field_name("name")
+    if name_node is None:
+        name_node = next((c for c in node.children if c.type == "simple_identifier"), None)
+    return _read_text(name_node, source) if name_node is not None else ""
+
+
+def _kotlin_member_nid(class_nid: str, member_node, name: str, source: bytes,
+                       groups_cache: dict) -> str:
+    """Node id for a Kotlin method, salted when a sibling collides.
+
+    ``make_id`` drops a leading ``_`` and folds case, so ``_bar()`` / ``bar()``
+    or ``run()`` / ``Run()`` of one class minted one id: the second declaration
+    vanished and its calls were credited to the survivor. A ``companion
+    object``'s members take the enclosing class's id, so group the functions of
+    the class body and its companion body by the id they would get, then apply
+    ``_underscore_salted_nid``, the Python/C#/Solidity/Java rule (#3302, #4415,
+    #5058, #5151): a unique public name keeps the plain id, every other
+    colliding name is salted. Members that collide with nothing keep their old
+    id; overloads share one name, so they are not a collision.
+    """
+    body = member_node.parent
+    if body is None or body.type not in _KOTLIN_MEMBER_BODY_TYPES or body.parent is None:
+        return _make_id(class_nid, name)
+    owner = body.parent
+    if owner.type == "companion_object" and owner.parent is not None \
+            and owner.parent.type in _KOTLIN_MEMBER_BODY_TYPES:
+        body = owner.parent
+    key = (class_nid, body.start_byte, body.end_byte)
+    groups = groups_cache.get(key)
+    if groups is None:
+        names: dict[str, set[str]] = {}
+        bodies = [body]
+        while bodies:
+            for c in bodies.pop().children:
+                if c.type == "function_declaration":
+                    text = _kotlin_function_name(c, source)
+                    if text and normalize_id(text):
+                        names.setdefault(_make_id(class_nid, text), set()).add(text.strip("`"))
+                elif c.type == "companion_object":
+                    bodies.extend(b for b in c.children if b.type in _KOTLIN_MEMBER_BODY_TYPES)
+        groups = {nid: ns for nid, ns in names.items() if len(ns) >= 2}
+        groups_cache[key] = groups
+    # A backticked name (`` `_case works` ``) is public or not by its text.
+    return _underscore_salted_nid(_make_id(class_nid, name), name.strip("`"), groups)
+
+
+_SWIFT_TYPE_DECL_TYPES = ("class_declaration", "protocol_declaration")
+_SWIFT_TYPE_NAME_TYPES = ("simple_identifier", "type_identifier", "user_type")
+_SWIFT_MEMBER_CALLABLE_TYPES = ("function_declaration", "protocol_function_declaration")
+
+
+def _swift_type_decl_name(decl, source: bytes) -> str:
+    """The name the class branch reads for a Swift type or extension."""
+    name_node = decl.child_by_field_name("name")
+    if name_node is None:
+        name_node = next((c for c in decl.children if c.type in _SWIFT_TYPE_NAME_TYPES), None)
+    return _read_text(name_node, source) if name_node is not None else ""
+
+
+def _swift_member_nid(class_nid: str, member_node, name: str, source: bytes,
+                      groups_cache: dict) -> str:
+    """Node id for a Swift method, salted when a sibling collides.
+
+    ``make_id`` drops a leading ``_`` and folds case, so ``_flatMap()`` /
+    ``flatMap()`` or ``run()`` / ``Run()`` of one type minted one id: the
+    second declaration vanished and its calls were credited to the survivor.
+    A type's id is its file stem plus its name, so its class body and every
+    ``extension`` of it in the file share that id; group the methods of all of
+    them by the id they would get, then apply ``_underscore_salted_nid``, the
+    Python/C#/Solidity/Java rule (#3302, #4415, #5058, #5151): a unique public
+    name keeps the plain id, every other colliding name is salted. Members
+    that collide with nothing keep their old id; overloads share one name, so
+    they are not a collision.
+    """
+    owner = member_node.parent
+    while owner is not None and owner.type not in _SWIFT_TYPE_DECL_TYPES:
+        owner = owner.parent
+    if owner is None:
+        return _make_id(class_nid, name)
+    owner_name = _swift_type_decl_name(owner, source)
+    key = (class_nid, owner_name)
+    groups = groups_cache.get(key)
+    if groups is None:
+        by_owner = groups_cache.get(None)
+        if by_owner is None:
+            # One pass over the file: method names under each type name.
+            by_owner = {}
+            root = owner
+            while root.parent is not None:
+                root = root.parent
+            stack = [(root, None)]
+            while stack:
+                n, decl = stack.pop()
+                if n.type in _SWIFT_MEMBER_CALLABLE_TYPES:
+                    name_node = n.child_by_field_name("name")
+                    if name_node is None:
+                        name_node = next(
+                            (c for c in n.children if c.type == "simple_identifier"), None)
+                    text = _read_text(name_node, source) if name_node is not None else ""
+                    if decl is not None and text and normalize_id(text):
+                        by_owner.setdefault(_swift_type_decl_name(decl, source), set()).add(text)
+                    continue
+                if n.type in _SWIFT_TYPE_DECL_TYPES:
+                    decl = n
+                stack.extend((c, decl) for c in n.children)
+            groups_cache[None] = by_owner
+        names: dict[str, set[str]] = {}
+        for text in by_owner.get(owner_name, ()):
+            names.setdefault(_make_id(class_nid, text), set()).add(text)
         groups = {nid: ns for nid, ns in names.items() if len(ns) >= 2}
         groups_cache[key] = groups
     return _underscore_salted_nid(_make_id(class_nid, name), name, groups)
@@ -2174,8 +2315,10 @@ def _scala_collect_type_refs(node, source: bytes, generic: bool, out: list[tuple
                     if arg.is_named:
                         _scala_collect_type_refs(arg, source, True, out, skip)
         return
+    # `os: Opt*` and the by-name `o: => Opt` wrap the parameter type.
     if t in ("compound_type", "infix_type", "function_type", "tuple_type",
-             "annotated_type", "projected_type"):
+             "annotated_type", "projected_type", "repeated_parameter_type",
+             "lazy_parameter_type"):
         for c in node.children:
             if c.is_named:
                 _scala_collect_type_refs(c, source, generic, out, skip)
@@ -7394,6 +7537,11 @@ def _extract_generic(
     php_member_groups: dict = {}
     # Java class body -> method/constructor collision groups, filled lazily.
     java_member_groups: dict = {}
+    # Kotlin class body (with its companion object) -> method collision groups.
+    kotlin_member_groups: dict = {}
+    # Swift type (class body and same-file extensions) -> method collision groups.
+    swift_member_groups: dict = {}
+    # C++ class body -> member-function collision groups, filled lazily.
 
     python_underscore_groups: dict[str, set[str]] = {}
     if config.ts_module == "tree_sitter_python":
@@ -9391,10 +9539,27 @@ def _extract_generic(
                         # The first declaration keeps the plain id; each other
                         # signature gets its own, salted like #3302/#4415.
                         csharp_sig, csharp_sig_meta = _csharp_method_signature(node, source)
+                        csharp_group_key = csharp_sig
+                        explicit = next((c for c in node.children
+                                         if c.type == "explicit_interface_specifier"), None)
+                        if explicit is not None:
+                            # `int IA.Get()` is reachable only through IA: never
+                            # the same member as a public `Get()` or `IB.Get()`
+                            # of the same signature, so it never shares their id
+                            # and always takes a salted one (the plain id stays
+                            # with the ordinary method). Like `IList<T>.this[]`.
+                            # The metadata `signature` stays the bare parameter
+                            # list: interface dispatch pairs overloads by it.
+                            explicit_text = "".join(_read_text(explicit, source).split())
+                            csharp_group_key = explicit_text + csharp_sig
+                            csharp_sig_meta = {
+                                **csharp_sig_meta,
+                                "explicit_interface": _csharp_explicit_interface_name(explicit_text),
+                            }
                         group = csharp_overloads.setdefault(func_nid, {})
-                        if group and csharp_sig not in group:
+                        if explicit is not None or (group and csharp_group_key not in group):
                             salt = hashlib.sha1(
-                                csharp_sig.encode("utf-8"), usedforsecurity=False
+                                csharp_group_key.encode("utf-8"), usedforsecurity=False
                             ).hexdigest()[:6]
                             func_nid = _make_id(func_nid, salt)
                 elif (config.ts_module in ("tree_sitter_javascript", "tree_sitter_typescript")
@@ -9410,6 +9575,15 @@ def _extract_generic(
                       and t in _JAVA_MEMBER_CALLABLE_TYPES):
                     func_nid = _java_member_nid(
                         parent_class_nid, node, sanitized_name, source, java_member_groups
+                    )
+                elif config.ts_module == "tree_sitter_kotlin" and t == "function_declaration":
+                    func_nid = _kotlin_member_nid(
+                        parent_class_nid, node, sanitized_name, source, kotlin_member_groups
+                    )
+                elif (config.ts_module == "tree_sitter_swift"
+                      and t in _SWIFT_MEMBER_CALLABLE_TYPES):
+                    func_nid = _swift_member_nid(
+                        parent_class_nid, node, sanitized_name, source, swift_member_groups
                     )
                 ruby_method_metadata = None
                 if ruby_method_kind is not None:
@@ -9440,9 +9614,13 @@ def _extract_generic(
                     line,
                     metadata=method_metadata,
                 )
+                # An explicit implementation is never a peer of the ordinary
+                # overloads, and kept out of the group it cannot push a later
+                # ordinary method of the same signature onto a salted id.
                 if (config.ts_module == "tree_sitter_c_sharp" and t == "method_declaration"
-                        and csharp_sig not in group and nodes and nodes[-1]["id"] == func_nid):
-                    group[csharp_sig] = nodes[-1]
+                        and explicit is None
+                        and csharp_group_key not in group and nodes and nodes[-1]["id"] == func_nid):
+                    group[csharp_group_key] = nodes[-1]
                 add_edge(parent_class_nid, func_nid, "method", line)
                 if config.ts_module == "tree_sitter_c_sharp" and t == "method_declaration":
                     csharp_method_returns.setdefault(parent_class_nid, {}).setdefault(
@@ -9520,10 +9698,12 @@ def _extract_generic(
                 csharp_type_params = _csharp_type_parameters_in_scope(node, source)
                 params_node = node.child_by_field_name("parameters")
                 if params_node is not None:
-                    for p in params_node.children:
-                        if p.type != "parameter":
-                            continue
-                        type_node = p.child_by_field_name("type")
+                    # `params Opt[] os` is no `parameter` node: its `type` and
+                    # `name` fields sit on the parameter list itself.
+                    type_nodes = [p.child_by_field_name("type")
+                                  for p in params_node.children if p.type == "parameter"]
+                    type_nodes.append(params_node.child_by_field_name("type"))
+                    for type_node in type_nodes:
                         refs: list[tuple[str, str, bool, str]] = []
                         _csharp_collect_type_refs(
                             type_node, source, False, refs, csharp_type_params
@@ -9571,9 +9751,15 @@ def _extract_generic(
                 params_node = node.child_by_field_name("parameters")
                 if params_node is not None:
                     for p in params_node.children:
-                        if p.type != "formal_parameter":
+                        if p.type == "formal_parameter":
+                            type_node = p.child_by_field_name("type")
+                        elif p.type == "spread_parameter":
+                            # `Opt... os` has no `type` field; its type is the
+                            # named child before `...`, as for a record component.
+                            type_node = next((c for c in p.children if c.is_named
+                                              and c.type not in ("modifiers", "variable_declarator")), None)
+                        else:
                             continue
-                        type_node = p.child_by_field_name("type")
                         refs = []
                         _java_collect_type_refs(type_node, source, False, refs)
                         for ref_name, role in refs:
@@ -9619,7 +9805,8 @@ def _extract_generic(
                         # property_promotion_parameter, not simple_parameter. Its
                         # type sits in the same direct named child shape, so accept
                         # both here; a promoted param is additionally a class field.
-                        if p.type not in ("simple_parameter", "property_promotion_parameter"):
+                        if p.type not in ("simple_parameter", "property_promotion_parameter",
+                                          "variadic_parameter"):
                             continue
                         is_promoted = p.type == "property_promotion_parameter"
                         type_node = None
@@ -10329,6 +10516,12 @@ def _extract_generic(
             (n.get("metadata") or {}).get("kind") == "constructor"
         ):
             continue
+        # An explicit interface implementation (`int IA.Get()`) is called only
+        # through the interface, never by its name on the class.
+        if config.ts_module == "tree_sitter_c_sharp" and (
+            (n.get("metadata") or {}).get("explicit_interface")
+        ):
+            continue
         raw = n["label"]
         normalised = raw.strip("()").lstrip(".")
         if config.ts_module == "tree_sitter_lua":
@@ -10353,10 +10546,16 @@ def _extract_generic(
             label_to_nid_ci.setdefault(normalised.lower(), n["id"])
 
     # method nid -> its overloads (declaration order), for the call walk.
+    # Explicit interface implementations are not call targets by name, so
+    # they are no one's overload peer either.
+    _csharp_callable_groups = [
+        [p for p in group.values() if not (p.get("metadata") or {}).get("explicit_interface")]
+        for group in csharp_overloads.values()
+    ]
     csharp_overload_peers: dict[str, list[dict]] = {
-        peer["id"]: list(group.values())
-        for group in csharp_overloads.values() if len(group) > 1
-        for peer in group.values()
+        peer["id"]: peers
+        for peers in _csharp_callable_groups if len(peers) > 1
+        for peer in peers
     }
 
     seen_call_pairs: set[tuple[str, str]] = set()
@@ -10404,6 +10603,12 @@ def _extract_generic(
     js_factory_scope: dict[str, str] = {}
     if config.ts_module in _SELF_CALL_LANGUAGES or lexical_calls:
         label_by_nid = {n["id"]: n["label"] for n in nodes}
+        # A C# explicit interface implementation owns its calls but is never
+        # what an unqualified or `this.` call by that name means.
+        csharp_explicit_nids = {
+            n["id"] for n in nodes
+            if (n.get("metadata") or {}).get("explicit_interface")
+        } if config.ts_module == "tree_sitter_c_sharp" else set()
         for e in edges:
             if (
                 config.ts_module == "tree_sitter_c_sharp"
@@ -10419,7 +10624,8 @@ def _extract_generic(
                 name = label_by_nid.get(e["target"], "").strip("()").lstrip(".")
                 if config.ts_module == "tree_sitter_php":
                     name = name.casefold()
-                methods_by_owner.setdefault((e["source"], name), e["target"])
+                if e["target"] not in csharp_explicit_nids:
+                    methods_by_owner.setdefault((e["source"], name), e["target"])
             elif (
                 config.ts_module in ("tree_sitter_javascript", "tree_sitter_typescript")
                 and e["relation"] == "contains"

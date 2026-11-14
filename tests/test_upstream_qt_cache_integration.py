@@ -71,15 +71,21 @@ def python_source(root):
     return source
 
 
-@pytest.mark.parametrize("old_schema", [5, 12, 13, 17, 33, 39, 40])
-@pytest.mark.parametrize("old_version", ["0.9.74", "0.9.76", "0.9.92"])
+@pytest.mark.parametrize(("old_version", "old_schema"), [
+    (version, schema)
+    for version in ("0.9.74", "0.9.76", "0.9.92")
+    for schema in (5, 12, 13, 17, 33, 39, 40)
+] + [("0.9.108", 46), ("0.9.109", 46)])
 def test_req_qml003_ac04_qml018_ac05_old_namespaces_miss_and_refresh(
         tmp_path, monkeypatch, integrated_versions, old_schema, old_version):
     """Real legacy writes miss even at the same version, refresh, then warm-hit."""
+    # Both actual schema-46 parents must miss the combined epoch. Test the
+    # upstream release at the same version so a version bump cannot mask reuse.
+    current_version = "0.9.109" if old_schema == 46 else "0.9.92"
+    monkeypatch.setattr(cache, "_EXTRACTOR_VERSION", current_version)
     source = python_source(tmp_path)
     semantic = semantic_entry(tmp_path)
-    # Both historical producers used this real cache writer. Their raw calls
-    # cannot establish the integrated lexical/Qt fact contract from their epoch.
+    # Use the real cache writer to exercise namespace pruning and refresh.
     with monkeypatch.context() as prior:
         prior.setattr(cache, "_EXTRACTOR_VERSION", old_version)
         prior.setattr(cache, "_AST_CACHE_SCHEMA", old_schema)
@@ -96,8 +102,8 @@ def test_req_qml003_ac04_qml018_ac05_old_namespaces_miss_and_refresh(
     fresh = cache.load_cached(source, root=tmp_path)
     assert fresh is not None
     assert {item.get("_python_receiver_shadowed") for item in fresh["raw_calls"]} == {False, True}
-    assert cache._AST_CACHE_SCHEMA == 46
-    assert cache.cache_dir(tmp_path).name == f"v0.9.92-s46-g{cache._grammar_fingerprint()}"
+    assert cache._AST_CACHE_SCHEMA == 47
+    assert cache.cache_dir(tmp_path).name == f"v{current_version}-s47-g{cache._grammar_fingerprint()}"
     warm = extraction.extract([source], root=tmp_path, cache_root=tmp_path, parallel=False)
     assert normalized(build_from_json(cold, directed=True, root=tmp_path)) == normalized(
         build_from_json(warm, directed=True, root=tmp_path))
@@ -165,7 +171,7 @@ def test_req_qml011_ac03_ac04_qml018_ac06_upgrade_failure_retains_repairs_repeat
 
     def fail_current_ast(temporary, target):
         target = Path(target)
-        if target.parent.name == f"v0.9.92-s46-g{cache._grammar_fingerprint()}":
+        if target.parent.name == f"v0.9.92-s47-g{cache._grammar_fingerprint()}":
             # Serialization and staging must really finish before the injected
             # replacement failure reaches the actual cache persistence owner.
             assert Path(temporary).is_file()

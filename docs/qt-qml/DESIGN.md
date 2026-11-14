@@ -3755,3 +3755,25 @@ runtime instantiation/context resolution out of the static model.
 Qt policy 34 regenerates these accepted relationships on same-version updates.
 The scope index and annotation module continue to own their existing stages;
 the existing accepted-product writer owns rejection, retention and recovery.
+
+### Graphify 0.9.109 composition and owners
+
+The C++ member allocator keeps one unadorned candidate for a method-only name
+collision when it has a unique eligible spelling. The existing allocator keeps
+literal digest reservations, constructor authority and mixed field/method
+separation. The later declaration/body fold verifies its carrier still holds
+one exact qualified name, then applies existing signature, owner and include
+checks. A failed extractor reports its rejection while the assembly boundary
+keeps that source out of accepted replacement scope. B3.5 consumes the persisted
+scan root and drops output for dispatched sources with no reading witness. The
+manifest retains their pending status.
+
+| Owner / touched legacy files | Physical lines | Review ceiling | Boundary |
+| --- | ---: | ---: | --- |
+| AST state / `cache.py` | 2175 | 2200 | Cache epochs and scoped semantic chunk cleanup |
+| Extraction / `extract.py`, `engine.py`, `resolution.py` | 13946, 12826, 5127 | 14000, 12900, 5150 | Parser migration, allocated member identity, source-owned reconciliation |
+| Graph/CLI / `build.py`, `cli.py` | 3646, 6282 | 3675, 6350 | Accepted replacements and CLI publication |
+| C# parser / `csharp.py` | 715 | 735 | Source facts and shared C# dispatch helpers |
+| Other parsers / `dart.py`, `go.py` | 651, 1045 | 670, 1070 | Language-local name and type extraction |
+| Semantic backend / `llm.py` | 4111 | 4150 | Fragment validation and queued-chunk lifecycle |
+| Chunking regression / `test_chunking.py` | 1079 | 1100 | Existing provider-independent chunk contracts |

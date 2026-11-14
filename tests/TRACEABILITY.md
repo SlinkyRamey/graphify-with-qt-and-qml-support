@@ -6248,3 +6248,15 @@ extra saved Qt fact coverage, alongside typed transport and rejection tests.
 
 All rows target the static source profile. Qt SDK execution, code generation,
 runtime bindings and undiscovered Qt APIs retain independent acceptance.
+
+## INC-QML-136 — Upstream 0.9.109 integration
+
+| Criterion | Production and regression coverage |
+| --- | --- |
+| REQ-CORE-006-AC01 / REQ-QML-022-AC02/AC06 | `tests/test_cpp_underscore_ids.py`, `tests/test_cpp_member_declaration_identity.py::test_underscore_twin_keeps_its_own_node_and_does_not_block_the_fold`, `tests/test_cpp_member_name_boundaries.py::test_req_core006_ac01_mixed_method_and_field_keep_distinct_reserved_candidates`, `tests/test_csharp_explicit_interface.py`, `tests/test_csharp_directive_encoding.py`, and `tests/test_variadic_param_refs.py`. A combined-source run reproduced the remaining fold veto; the exact case and its C++/Qt neighbors passed a 110-case replay. |
+| REQ-CORE-006-AC03 / REQ-QML-011-AC04 | `tests/test_failed_ast_replacement.py`, `tests/test_cpp_source_views.py`, `tests/test_qml_resolver_safety.py`, `tests/test_symlinked_root_source_file.py`, `tests/test_skillgen.py`, and `tests/test_skillgen_coverage_root.py`. Local Windows extraction and alias checks passed 47 cases with 12 platform skips. Three linked-root cases ran successfully with real NTFS junctions; hosted symlink coverage is independent. |
+| REQ-CORE-006-AC04 / REQ-QML-018-AC02 | `tests/test_upstream_qt_cache_integration.py::test_req_qml003_ac04_qml018_ac05_old_namespaces_miss_and_refresh[0.9.108-46]` and `[0.9.109-46]`; the complete 25-case Linux gate inventory passed in local Windows JUnit. The frozen lock and all five generated validators passed. |
+
+Local evidence uses the frozen all-extras development profile on Windows.
+The ordinary PR workflow supplies separate platform and installed-wheel
+evidence for the synthetic merge revision.
