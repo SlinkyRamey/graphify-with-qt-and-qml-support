@@ -6211,3 +6211,12 @@ failures were reproduced and corrected. The C++ alias newline oracle verifies
 physical byte witnesses before comparing whole normalized lookup facts and
 resolved calls through direct, cold and warm extraction. The combined focused
 replay passed 25 exercised cases, including adjacent preprocessor controls.
+
+The next archived PR run reported 22 Qt combined-project failures.
+Under REQ-QML-008-AC02 and REQ-QML-018-AC05/AC06, an exact constructor body
+retains independent source ownership once a complete native class binds.
+Name-only constructor overloads from its header cannot replace the accepted
+candidate. The existing combined adoption, rejection/retry and initial-repeat
+cases exercise the constructor emission owner and the resolved signal separately.
+All 157 focused cases passed after that correction, including all 22 hosted
+identities and the previous native class, constructor and uncertainty controls.

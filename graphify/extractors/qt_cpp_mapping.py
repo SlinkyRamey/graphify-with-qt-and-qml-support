@@ -242,7 +242,10 @@ class CppMapping:
             class_id = definition["node_id"]
             candidates = {node["id"] for node in self.nodes if node.get("_callable") and _label(node) == record["name"]
                           and class_id in self.class_parents.get(node["id"], ()) and constructor_class_authorized(node)}
-            if owners:
+            # A constructor already has occurrence and signature proof from
+            # the guard above. Class admission can confirm that callable's
+            # parent, but same-named header overloads cannot replace it.
+            if owners or record["out_of_line_constructor"]:
                 candidates.intersection_update(record["candidates"])
             record.update(class_id=class_id, class_name=name, node_id=next(iter(candidates)) if len(candidates) == 1 else "",
                           status="resolved" if len(candidates) == 1 else "ambiguous" if candidates else "unavailable")
