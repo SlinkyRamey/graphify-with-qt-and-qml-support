@@ -6235,3 +6235,16 @@ loading the extractor package through Qt/QML metadata readers. The same
 validated literal decoders now live in a parser-independent transport module.
 The 190-case focused selection passes with the original no-import checks and
 extra saved Qt fact coverage, alongside typed transport and rejection tests.
+
+## INC-QML-135 — Qt 6.12 source attribute and scope review
+
+| Criterion | Production and regression coverage |
+| --- | --- |
+| REQ-QML-005-AC05 | `tests/test_qml_bound_component_scope.py::test_req_qml005_ac05_outer_id_precedes_local_property_only_when_bound`, `::test_req_qml005_ac05_bound_capture_excludes_local_ids_js_aliases_and_foreign_ids`, `::test_req_qml005_ac05_editing_directive_replaces_the_incremental_target`, `::test_req_qml005_ac05_ambiguous_outer_id_does_not_fall_back`. Synthetic Qt 6.12.0 independently confirms Bound and Unbound collision targets and rejects a cross-component alias. |
+| REQ-QML-008-AC05 | `tests/test_qt_bindable_defaults.py::test_req_qml008_ac05_bindable_defaults_link_original_declaration`, `::test_req_qml008_ac05_bindable_defaults_fail_closed`, `::test_req_qml008_ac05_bindable_reference_requires_exact_scope`, `::test_req_qml008_ac05_bindable_target_requires_moc_declaration`, `::test_req_qml008_ac05_bindable_update_and_fresh_facade_agree`. The pre-fix facade left the generated roles unresolved where the bindable declaration was accepted. |
+| REQ-QML-008-AC06 | `tests/test_qt_moc_includes.py::test_req_qml008_ac06_moc_includes_are_source_sites_with_original_bytes`, `::test_req_qml008_ac06_present_header_never_supplies_ordinary_include_authority`, `::test_req_qml008_ac06_unsupported_moc_include_has_a_source_diagnostic`, `::test_req_qml008_ac06_warm_reload_matches_fresh_and_removes_stale_markers`. The original project parser rejected the occurrence alongside a valid property. The real updater rejects malformed input and retains the prior graph before recovery and cold parity. |
+| REQ-QML-008-AC07 | `tests/test_qt_list_property_annotations.py::test_req_qml008_ac07_documented_list_policy_preserves_provider`, `::test_req_qml008_ac07_list_policy_has_no_authority_from_invalid_markers`, `::test_req_qml008_ac07_nested_list_policy_does_not_authorize_parent_hint`, `::test_req_qml008_ac07_list_policy_update_removes_stale_annotation`. All three official SDK spellings formerly suppressed the otherwise accepted provider. Coverage proves member resolution, source occurrence, conflict rejection, and a repeated warm update with fresh parity. |
+| REQ-QML-018-AC02 / REQ-QML-011-AC04 | `tests/test_qt_analysis_state.py::test_req_qml018_ac02_literal_parser_upgrade_retires_prior_policy_and_repeats[33]` and `tests/test_qt_cmake_rc_updates.py::test_req_qml011_ac04_prior_policy_refresh_rejection_retains_products_then_commits26[33]`. Policy 34 upgrades the preceding checkpoint and preserves transactional update ownership. |
+
+All rows target the static source profile. Qt SDK execution, code generation,
+runtime bindings and undiscovered Qt APIs retain independent acceptance.

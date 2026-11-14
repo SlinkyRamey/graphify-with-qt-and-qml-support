@@ -6000,3 +6000,18 @@ Exit requires targeted source and generated checks, AST-only repository update,
 and exact PR validation. A subsequent authorized fork merge requires separate
 resulting-commit validation. The canonical workspace retains unrelated
 coverage/results with pre-change byte hashes.
+
+### INC-QML-135 — Review Qt 6.12 source attributes and component scope
+
+Compare the Qt 6.12 property system, QObject macros, C++ exposure and QML
+document structure against the implemented static profile. REQ-QML-008-AC05
+and AC06 cover generated bindable accessors and moc include hints.
+REQ-QML-008-AC07 covers literal C++ list-property modifiers and
+REQ-QML-005-AC05 covers explicit bound component scope. Prove each initial
+failure and its source, rejected/ambiguous cases and persisted update behavior.
+SDK internals, preprocessing, generated execution and runtime QML context
+inference remain outside this increment.
+
+Exit requires the named local regressions, adjacent native/QML controls and a
+fresh AST-only repository graph. The fork-default PR provides hosted coverage
+for the combined source and upstream sync on the existing matrix.

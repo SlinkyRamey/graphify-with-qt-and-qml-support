@@ -17,7 +17,9 @@ QT_NAMED_METADATA = frozenset({"qmldir", "CMakeLists.txt"})
 # Scoped lookup and literal/class/binding proof retire prior accepted joins.
 # Same-unit anonymous helpers need their original namespace witness as well.
 # Direct source declarations must retain their AST tier before graph composition.
-QT_POLICY_VERSION = 33
+# ComponentBehavior, bindable properties and generated moc include annotations
+# change accepted source evidence at the same installed package version.
+QT_POLICY_VERSION = 34
 
 
 def is_qt_metadata(path: str | Path) -> bool:
@@ -47,7 +49,7 @@ def requires_native_refresh(paths: Iterable[str | Path]) -> bool:
     # Same-version fork upgrades can change valid default/Q_UNUSED syntax.
     # Comments adjacent to a possible empty default conservatively refresh;
     # only the parser's lexical/AST adapter determines actual source semantics.
-    markers = re.compile(rb"Q_OBJECT|Q_GADGET|Q_PROPERTY|Q_INVOKABLE|QML_|qmlRegister|QQml|QQuickView|QObject|Q_SIGNALS|Q_SLOTS|Q_SIGNAL|Q_SLOT|Q_EMIT|SIGNAL\s*\(|SLOT\s*\(|Q_UNUSED\b|=\s*(?:\{\s*(?:\}|/\*|//)|/\*|//)")
+    markers = re.compile(rb"Q_OBJECT|Q_GADGET|Q_PROPERTY|Q_INVOKABLE|QML_|qmlRegister|QQml|QQuickView|QObject|Q_SIGNALS|Q_SLOTS|Q_SIGNAL|Q_SLOT|Q_EMIT|Q_MOC_INCLUDE\b|SIGNAL\s*\(|SLOT\s*\(|Q_UNUSED\b|=\s*(?:\{\s*(?:\}|/\*|//)|/\*|//)")
     for path in paths:
         if path.suffix.lower() not in QT_CPP_SUFFIXES:
             continue

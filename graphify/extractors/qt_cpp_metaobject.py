@@ -1,4 +1,4 @@
-"""Source-owned Q_OBJECT occurrences; QObject ancestry does not supply own moc code."""
+"""Source-owned Qt meta-object declarations and code generation annotations."""
 from __future__ import annotations
 
 from graphify.extractors.qt_cpp_registration import conditional_offset
@@ -34,3 +34,17 @@ def add_metaobject_declarations(mapping, facts, record, owned):
     return {"metaobject_contract": 1, "metaobject_count": len(markers),
             "metaobject_status": status, "metaobject_reason": reason,
             "metaobject_span": markers[0]["span"] if len(markers) == 1 else {}}
+
+
+def add_moc_includes(mapping, facts):
+    """Record generated-code input hints without joining the native include index."""
+    for marker in mapping.unit.macros:
+        if marker["name"] != "Q_MOC_INCLUDE":
+            continue
+        owner = mapping.class_at(marker["start_byte"])
+        conditional = conditional_offset(mapping.unit, marker["start_byte"])
+        facts.add("moc_include", marker["args"][0][1:-1], marker["span"],
+                  owner=owner["node_id"] if owner else None,
+                  class_name=owner["qualified_name"] if owner else "", conditional=conditional,
+                  status="dynamic" if conditional else "source_only",
+                  reason="moc_include_conditional" if conditional else "")

@@ -128,7 +128,11 @@ class RelationshipLookup:
         component, scope = md.get("component_key"), md.get("object_scope_key")
         # Local QML names shadow an imported JS qualifier, even when they cannot
         # be continued statically. A computed namespace never bypasses shadowing.
-        head = self.index.resolve_member(file, component, scope, parts[0])
+        # Aliases stay in their component. A direct signal handler names a
+        # signal on its own object, while Connections.target is an expression.
+        kind = md.get("kind")
+        capture_outer_ids = kind != "alias" and (kind != "handler" or md.get("connections"))
+        head = self.index.resolve_member(file, component, scope, parts[0], capture_outer_ids=capture_outer_ids)
         if head.status == "ambiguous":
             return head
         if head.status == "resolved":
@@ -153,5 +157,6 @@ class RelationshipLookup:
         script = self._qml_script(file, component, reference)
         if script.status in {"resolved", "ambiguous"} or script.evidence:
             return script
-        result = self.index.resolve_member(file, component, scope, reference, lexical_names=lexical)
+        result = self.index.resolve_member(file, component, scope, reference,
+                                           lexical_names=lexical, capture_outer_ids=capture_outer_ids)
         return self.chase_alias(result, seen)

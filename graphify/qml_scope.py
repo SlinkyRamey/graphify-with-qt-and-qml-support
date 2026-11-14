@@ -14,12 +14,18 @@ class QmlProjectIndex(QmlModuleIndex):
     def __init__(self, nodes, edges, **kwargs):
         super().__init__(nodes, edges, **kwargs)
         self.objects, self.members, self.inline = {}, {}, {}
+        self.object_ids = {}
+        file_declarations = {}
         for nid, node in self.nodes.items():
             md, path = qml_metadata(node), self.paths[nid]
             component = md.get("component_key", "")
             scope = md.get("object_scope_key", "")
             if md.get("kind") == "object":
                 self.objects.setdefault((path, component, scope), []).append(nid)
+                if object_id := md.get("object_id"):
+                    self.object_ids.setdefault((path, component, object_id), []).append(nid)
+            elif md.get("kind") == "file":
+                file_declarations.setdefault(path, []).append(nid)
             elif md.get("kind") in {"property", "function", "signal", "enum"}:
                 self.members.setdefault((path, component, scope, md.get("raw_name")), []).append(nid)
             elif md.get("kind") == "inline_component":
@@ -29,6 +35,54 @@ class QmlProjectIndex(QmlModuleIndex):
                               for parent in self.parents.get(nid, ()) if parent in self.nodes]
                     enclosing = owners[0] if len(set(owners)) == 1 else None
                 self.inline.setdefault((path, enclosing, md.get("raw_name")), []).append(nid)
+        self.bound_files = {
+            path: declarations[0] for path, declarations in file_declarations.items()
+            if len(declarations) == 1 and qml_metadata(self.nodes[declarations[0]]).get("component_behavior") == "Bound"
+        }
+        self.enclosing_bound_components = self._index_bound_components()
+
+    def _index_bound_components(self):
+        """Derive template ancestry from same-file declaration ownership."""
+        candidates = {}
+        for path in self.bound_files:
+            for nid in self.by_file[path]:
+                md = qml_metadata(self.nodes[nid])
+                component = md.get("component_key")
+                if md.get("kind") != "object" or not component or md.get("parent_scope_key"):
+                    continue
+                for owner in self.parents.get(nid, ()):
+                    if self.paths.get(owner) != path:
+                        continue
+                    parent = qml_metadata(self.nodes[owner])
+                    kind = parent.get("kind")
+                    if kind == "inline_component" and parent.get("component_key") == component:
+                        enclosing = parent.get("enclosing_component_key")
+                    elif kind in {"object", "property"}:
+                        enclosing = parent.get("component_key")
+                    else:
+                        continue
+                    if enclosing and enclosing != component:
+                        candidates.setdefault((path, component), set()).add(enclosing)
+        return {key: next(iter(values)) for key, values in candidates.items() if len(values) == 1}
+
+    def _resolve_id(self, file, component, name, *, capture_outer_ids):
+        """The nearest component's IDs win, followed by its proven lexical ancestors."""
+        local = self.object_ids.get((file, component, name), ())
+        if local:
+            return answer(local)
+        if not capture_outer_ids or file not in self.bound_files:
+            return None
+        seen = {component}
+        enclosing = self.enclosing_bound_components.get((file, component))
+        while enclosing is not None and enclosing not in seen:
+            seen.add(enclosing)
+            candidates = self.object_ids.get((file, enclosing, name), ())
+            if candidates:
+                resolved = answer(candidates)
+                return Resolution(resolved.status, resolved.target_id, resolved.reason,
+                                  evidence=(self.bound_files[file],), candidates=resolved.candidates)
+            enclosing = self.enclosing_bound_components.get((file, enclosing))
+        return None
 
     def module_import(self, uri, major=None, minor=None):
         results = [super().module_import(uri, major, minor)]
@@ -128,7 +182,7 @@ class QmlProjectIndex(QmlModuleIndex):
                         for nid in self._root_objects(base.target_id)], reason="member_unavailable")
 
     def resolve_member(self, file: str, component_key: str, object_scope_key: str,
-                       name: str, *, lexical_names=()) -> Resolution:
+                       name: str, *, lexical_names=(), capture_outer_ids=True) -> Resolution:
         """IDs precede properties; lexical JS bindings prevent any QML fallback."""
         parts = name.split(".")
         if parts[0] in lexical_names:
@@ -143,18 +197,17 @@ class QmlProjectIndex(QmlModuleIndex):
                            "receiver_scope_unavailable")
             return (self.follow_member(owner.target_id, parts[1:]) if owner.target_id is not None and
                     len(parts) > 1 else owner)
-        candidates = []
-        for (path, component, _), ids in self.objects.items():
-            if path == file and component == component_key:
-                candidates.extend(nid for nid in ids if qml_metadata(self.nodes[nid]).get("object_id") == parts[0])
-        if candidates:
-            target = answer(candidates)
+        target = self._resolve_id(file, component_key, parts[0], capture_outer_ids=capture_outer_ids)
+        if target is not None:
             if len(parts) == 1 or target.target_id is None:
                 return target
-            return self._follow_member(target.target_id, parts[1:])
+            member = self._follow_member(target.target_id, parts[1:])
+            return Resolution(member.status, member.target_id, member.reason,
+                              target.evidence + member.evidence, member.candidates)
         if len(parts) > 1:
             # An own/root property precedes a type namespace with the same spelling.
-            head = self.resolve_member(file, component_key, object_scope_key, parts[0])
+            head = self.resolve_member(file, component_key, object_scope_key, parts[0],
+                                       capture_outer_ids=capture_outer_ids)
             if head.target_id is not None:
                 return self.follow_member(head.target_id, parts[1:])
             if head.status == "ambiguous":

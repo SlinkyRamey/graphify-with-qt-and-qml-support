@@ -109,7 +109,7 @@ def test_package_fact_policy_and_ignore_configuration_invalidate_unchanged_qml(t
     assert inspect_qt_analysis(tmp_path, out, [path], excludes=["generated/"]).changed
 
 
-@pytest.mark.parametrize("prior_policy", [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32])
+@pytest.mark.parametrize("prior_policy", [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33])
 def test_req_qml018_ac02_literal_parser_upgrade_retires_prior_policy_and_repeats(tmp_path, monkeypatch, prior_policy):
     # Changed facts at unchanged source/package bytes must retire each actual
     # predecessor checkpoint, including31 before anonymous helper proof, then settle.
@@ -126,7 +126,7 @@ def test_req_qml018_ac02_literal_parser_upgrade_retires_prior_policy_and_repeats
         commit_qt_analysis(out, old)
         assert not inspect_qt_analysis(tmp_path, out, [path]).changed
     current = inspect_qt_analysis(tmp_path, out, [path])
-    assert policy.QT_POLICY_VERSION == 33
+    assert policy.QT_POLICY_VERSION == 34
     assert current.changed and current.fingerprint != old.fingerprint
     assert path.read_bytes() == raw
     commit_qt_analysis(out, current)
