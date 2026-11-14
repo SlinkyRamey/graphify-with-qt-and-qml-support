@@ -188,7 +188,7 @@ def _visible_using(call, directives):
     return False
 
 
-def reconcile_free_call_sites(index, nodes, edges, raw_calls, path):
+def reconcile_free_call_sites(index, nodes, edges, raw_calls, path, *, preserve_call_sites=False):
     """Retire only free-body guesses and defer exact source sites to their owner."""
     by_id = {node["id"]: node for node in nodes}
     free_ids = {node["id"] for node in nodes if "cpp_function" in node.get("metadata", {})}
@@ -267,4 +267,5 @@ def reconcile_free_call_sites(index, nodes, edges, raw_calls, path):
     # Local direct producer consumers receive the same conservative free-owner
     # resolution; the facade repeats it with the complete accepted corpus.
     from graphify.extractors.cpp_free_calls import resolve_free_function_calls
-    resolve_free_function_calls(nodes, edges, sites)
+    resolve_free_function_calls(nodes, edges, sites,
+                                **({"preserve_call_sites": True} if preserve_call_sites else {}))

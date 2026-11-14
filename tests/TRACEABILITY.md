@@ -6073,3 +6073,165 @@ validators pass. Whole Ruff passes; qualified Pyright retains exactly688
 diagnostic identities, no additions or retirements relative to `da4ab45f`, with
 the previously established raw-parent classification retained. Full source,
 fresh package/consumers, native PR and resulting-v8 gates remain separate.
+# INC-QML-133 — Upstream 0.9.101 integration evidence
+
+**Status: local integration qualification in progress; hosted/current-source
+acceptance pending.** Frozen incoming upstream is
+`8e6a6d2129d4aeffc7a0e9ed79b153f7f057f42b`, fork base is
+`bcda696f2d1f78844dcfda23b497898077a2b869`. The retained contribution branch is
+`codex/qt-qml-upstream-094`; root owns Git/publication. No new PR or merge result
+is established by this local checkpoint. Existing INC132 source/synthetic/result
+proof remains historical and is not relabelled as INC133 execution.
+
+All fourteen unrelated `.coverage`/`test-results` files have restorable copies
+and SHA256 identities under ignored
+`.venv/upstream-sync-maintenance/20261102-upstream-0101/protected-before.json`.
+The active owner receipt and disjoint contributor receipts are in that directory.
+Application/global installations and pending ScalarAI adoption remain separate.
+
+| Acceptance | Exact executable boundary and required evidence | Current local scope |
+| --- | --- | --- |
+| REQ-CORE-006-AC01; REQ-QML-003-AC04/008-AC02/AC03/022-AC06 | `test_cpp_split_header_owner.py::test_split_header_member_call_never_binds_unrelated_free_function`, `test_distinct_namespace_types_keep_their_exact_included_owner`, `test_ambiguous_included_owner_fails_closed`; `test_qt_upstream101_cpp_contract.py::test_req_qml022_ac06_included_owner_rebuild_drops_stale_dispatch`; retained constructor-authority tests; Rust metadata-transition controls. | Actual included-owner/free-call failures retained before correction. Namespace fixture now requires exact source owner/callee, with a separate truly conflicting-provider rejection; this is an expectation correction, not a product-fix claim. Final current-source C++/Rust selection299 passed without skips, including all20 corrected constructor rejection cases and unchanged-byte crate-boundary transitions. |
+| REQ-CORE-006-AC02; REQ-QML-010-AC02/AC03/022-AC06 | `test_qt_upstream101_build_contract.py::test_req_qml010_ac02_aliases_share_the_complete_import_cohort`, `test_req_qml022_ac06_aliases_cannot_claim_a_foreign_language`, `test_req_qml010_ac03_reference_namespace_cannot_heal_a_future_identity`; `test_qt_upstream101_transport_aliases.py::test_req_qml010_ac03_raw_alias_conflict_rejects_before_input_conversion`, `test_req_qml022_ac06_unused_collection_alias_and_modes_are_not_hidden`, `test_req_qml010_ac03_export_alias_rejection_retains_disk_accounting_and_recovers`. | Raw aliases/modes/unused collections reject before adapters; actual G-derived undirected enumeration has separately characterized physical-order handling. Cross-chunk forward references and ordinary unpromised legacy tolerance are retained. Source accounting survives real replace failure and shrink rejection, then successful retry consumes it. |
+| REQ-CORE-006-AC03; REQ-QML-011-AC03/04/012-AC02 | `test_qt_upstream101_state_contract.py::test_REQ_QML_022_AC06_semantic_alias_retains_cleanup_and_current_diagnostics`, `test_REQ_QML_012_AC02_alias_rejection_preserves_disk_and_allows_repair`; incoming `test_lost_saved_semantic_nodes.py`, `test_semantic_origin_stamp.py`, `test_slice_checkpoint_completeness.py`, `test_shrink_guard_dedup_merge_4940.py`. | New combined source/direction/alias tests pass within their recorded focused profiles. Incoming requested `code_only` configuration has pre-analysis lifetime; graph/manifest/stamp rollback does not claim rollback of that requested setting. |
+| REQ-CORE-006-AC04; REQ-QML-011-AC01/03/04/012-AC01/02/04 | `test_qt_upstream101_state_contract.py::test_REQ_QML_011_AC03_schema41_retires40_without_rekeying_semantics`, `test_REQ_CORE_006_AC04_physical_prefix_keeps_one_logical_stat_owner`, `test_REQ_CORE_006_AC04_unc_prefix_retains_absolute_share_identity`, `test_REQ_QML_012_AC02_code_only_qt_metadata_update_rejects_and_recovers`; current migration/replacement-fault tests in `test_upstream_qt_cache_integration.py` and `test_qt_upstream099_cache_contract.py`. | AST41 current assertions and real fault destinations advance together; 40 remains a predecessor. Sixteen unchanged native retention cases fail with the incoming cache owner and pass after logical-root correction. Exact raw-R-cache A/B and a separate exact installed-R replay are retained. UNC proof is lexical only; eight case-sensitive-filesystem cases skip on this native Windows filesystem and are not passes. |
+| REQ-QML-014-AC01/02/03/04/015-AC01/02/03; REQ-CORE-004-AC02/AC03 | `test_ci_source_cases.py::test_req_qml014_ac04_source_gate_accepts_every_collected_joint_case`, `test_req_qml003_ac04_qml018_ac05_current_migrations_require_individual_passes`; `test_qml_ci_profiles.py::test_req_core006_ac01_ac04_upstream101_native_controls_are_selected`; actual full/native/installed/hosted receipts. | Three new schema40 migration identities join the source gate; their missing/skipped controls remain mandatory. Six incoming generic-language/cache modules join native source admission while Ubuntu artifact-only selection is unchanged. Hosted source/base/checkout and each actual lane remain pending. |
+
+Focused receipts at this checkpoint: root source-gate37 passed with input/protected
+bytes unchanged; state/cache54 passed with eight explicit filesystem skips;
+build/provenance/source-transport638 passed without skips, including the new
+combined boundaries. These are distinct selections, not additive full-suite or
+whole-platform acceptance counts. Package31-core/35-QML-watch profiles and raw
+source-matched wheels need fresh artifacts; the frozen lock changes only the
+project version, preserving all226 non-project dependency records.
+
+Failure provenance is explicit. Ignored `.venv` fixture ancestors caused empty
+admitted corpora in early probes; public OS-temp fixtures corrected that setup.
+An early fixture used a nonexistent external-node attribute, another omitted the
+required multigraph promise, a QRC assertion confused policy configuration with
+source content, and an undirected test context ignored already retained logical
+direction. These rejected probes remain in their contributor histories and are
+not product-fix claims. The source-mode accounting failures, future-ID marker
+repair, typed raw-alias gap and Windows root/index rebinding have separate real
+failure witnesses and automatically collected regressions.
+
+Final precommit source qualification adds the following independent evidence.
+`test_rust_scoped_call_resolution.py::test_core006_ac04_cargo_boundary_changes_retire_cached_scoped_calls`
+and `test_core006_ac01_persisted_relative_rust_context_uses_the_explicit_scan_root`
+cover standalone/facade metadata transitions, warm raw syntax and explicit
+relative context without mutating accepted input. The current C++/Rust selection
+passes299 cases, with zero skips/failures. The earlier broad C++ run's1509passes,
+20 constructor failures and four skips remain a pre-correction record, not a
+green current-source full run.
+
+The watcher/control selection now passes266 cases with14 explicit skips: eight
+require a case-sensitive filesystem, two cannot remove a Windows process CWD,
+one is a POSIX flock/unlink race, one depends on runner-specific Git behavior,
+and two require unavailable/different Windows symlink setup. These remain
+unexecuted outcomes. The new real producer-dispatch characterization
+`test_qt_upstream101_state_contract.py::test_REQ_QML_022_AC06_semantic_document_phase_preserves_dispatch_and_prior_layer`
+and the existing semantic-document matrix pass identically before/after the
+pure-helper move. No persistence/state ownership or fallback order is moved.
+
+Whole-repository Ruff and all five authoritative generator validators pass after
+`python -m tools.skillgen --bless`. Fresh same-toolchain raw Git parent type runs
+report688 errors at R and694 at incoming U; current697 diagnostics each match an
+exact parent file/rule/message/stripped statement. Four new integration diagnostics
+were corrected: mixed accounting value annotation, two explicit stat-path guards,
+and watcher control-flow analyzability. Types still exit1; inherited diagnostics
+are not a passed type gate or evidence of exhaustive API correctness. Owned
+`type-classification-final.json` retains the exact matching rule and inputs.
+
+The reviewed upstream unsupported-lock-API fallback remains distinct from a
+failed lock-file open/setup. It retains the foreign lock file and permits its
+existing unlocked fallback with a warning; this does not prove serialized
+concurrent writers on filesystems lacking a working lock API. No test, lock
+deadline, platform selection or protection was relaxed to qualify this change.
+
+## INC-QML-134 — Upstream 0.9.108 integration
+
+| Acceptance | Evidence and boundary |
+| --- | --- |
+| REQ-CORE-006-AC01; REQ-QML-022-AC02/AC06 | `test_cpp_conditional_initializers.py::test_repeated_conditional_calls_preserve_each_site_without_adding_symbols`, `test_cpp_template_members.py::test_primary_template_owner_preserves_qualifiers_namespace_and_guards`, `test_cpp_free_body_proof.py`, `test_csharp_member_nodes.py::test_explicit_interface_indexers_keep_their_own_calls` and `test_csharp_lexical_scope_boundaries.py::test_req_qml022_ac02_constructor_local_uses_existing_constructor_owner`. The native correction selection passed 231 tests, including the unchanged historical C++ cache/Panel link tests and C# overload controls. |
+| REQ-CORE-006-AC02; REQ-QML-013-AC04 | `test_affected_member_seed.py` exercises nested callers across directed and reversed-undirected storage, with a malformed partial edge. `test_qt_qml_search.py::test_shortest_path_uses_public_qt_metadata_without_guessing_unknown_names` reproduces the upstream false refusal before validating the merged rule. Graph/path/reload/transport selection passed 415 with one skip; the final membership selection passed eight. |
+| REQ-CORE-006-AC03; REQ-QML-014-AC04 | `test_upstream_qt_export_integration.py::test_req_qml014_ac04_typed_semantic_replacement_retains_retry_authority` exercises build_merge and the real atomic replacement seam. It verifies unrelated semantic-loss rejection, retained bytes and accounting, same-object retry and cleanup. |
+| REQ-CORE-006-AC04; REQ-QML-011-AC01/AC03/AC04 | `test_update_incremental.py::test_cli_update_reprojects_after_extractor_epoch_changes`, `test_cli_update_reconciles_live_sources_excluded_by_gitignore` and `test_watch.py::test_watch_atomic_ignore_replacement_reconciles_published_source` passed on Windows. The predecessor-cache matrix intentionally admits schemas 40, 41 and 45 only under their historical profile; current tests advance the schema-46 namespace and the real fault destination together. |
+| REQ-QML-001-AC01/AC03; REQ-CORE-004-AC02/AC03 | Frozen lock resolves offline. The five skill generator validators pass for 134 artifacts. Installed-host and Part A tests passed 105 cases with three skips. The package, full Windows suite and hosted run need separate receipts for the final source. |
+
+Run with the isolated locked Python 3.12 environment and `python -m pytest
+--no-cov -p no:cacheprovider` on the named selections. Reports and preserved
+local results are under ignored `.venv/upstream-sync-maintenance/20261114-upstream-0108/`.
+No runtime Qt SDK, macOS or resulting-branch behavior is inferred from focused
+Windows results.
+
+The C++ header cap boundary exercises both facade and direct read paths using
+`test_4978_reconcile_cost.py`. The dialect oracle keeps explicit ordinary and
+cutoff cases, and the combined I/O witness detects duplicate reads through
+either file API. `test_cpp_incremental_type_resolution.py` exercises the
+upstream one-file path with a CUDA C++ source and the retained full Qt-capable
+cohort with the original C++ suffix. Both assert the retained type/call evidence.
+Whole-tree Pyright continues to report inherited findings, including the CLI
+dispatcher and generic extractor analysis limits present in both baselines.
+Those findings are separate from executed test and package results.
+
+At PR source `412a897e`, the focused integration identified a late fallback
+that could reverse a typed C++ merge refusal after ID disambiguation.
+`test_cpp_class_case_remap.py::test_req_qml022_ac06_facade_does_not_undo_unproved_multiowner_join`
+now passes with the original assertions. The 62-case correction selection
+includes positive typed joins, namespace splits, exact spans and uncertainty.
+The source-gate inventory also records the added atomic retry case.
+Actual collection and the required-outcome rejection tests pass with the full
+explicit inventory. No workflow lane or assertion is disabled.
+
+For REQ-CORE-004-AC02, hosted Windows compatibility at `412a897e` executed
+`test_hooks.py::test_worktree_guard_survives_exported_cdpath` with the native
+WSL shim. The shell never reached the hook guard. The test now uses the
+existing configured PATH selector to execute the qualified Git Bash binary.
+Native pre-PATH collision reproduction fails before this change and passes
+with the real Bash/Git assertions after it.
+
+The manual manifest shortcut must validate the recorded graph identity before
+treating an unchanged batch as complete. The hosted
+`test_qt_update_direction_integrity.py` cases pin or externally edit the
+existing graph and inject malformed candidate relationship records. A stale
+stamp now goes through the full candidate validation and preserves the prior
+bytes on rejection. Ordinary unchanged manifests retain their fast path.
+
+The source-mapping and installed guidance regressions exercise existing
+requirements. Under REQ-QML-008-AC02, generic member containment cannot
+create a Qt class endpoint without an accepted native class body. The
+97-case source/reference and QML bridge selection passes after the fix.
+The compact disk prompt adds the same source-backed AST and exact scoped-ID
+guidance as other prompts. All 24 guidance cases and five authoritative
+generator checks pass, and the installed Claude core is 798 lines.
+
+The C# recovery correction retains original conditional ranges and complete
+local-function alternatives. Exact hosted field, indexer, and lexical-call
+failures were reproduced and corrected. The C++ alias newline oracle verifies
+physical byte witnesses before comparing whole normalized lookup facts and
+resolved calls through direct, cold and warm extraction. The combined focused
+replay passed 25 exercised cases, including adjacent preprocessor controls.
+
+The next archived PR run reported 22 Qt combined-project failures.
+Under REQ-QML-008-AC02 and REQ-QML-018-AC05/AC06, an exact constructor body
+retains independent source ownership once a complete native class binds.
+Name-only constructor overloads from its header cannot replace the accepted
+candidate. The existing combined adoption, rejection/retry and initial-repeat
+cases exercise the constructor emission owner and the resolved signal separately.
+All 157 focused cases passed after that correction, including all 22 hosted
+identities and the previous native class, constructor and uncertainty controls.
+
+Linux Python 3.12 at `706243d6` exposed a separate four-case C# decoding
+regression. The C# extractor now uses the shared decoder before optional parser
+recovery. The production encoding and conditional/metadata selection passed
+163 cases, including all four original failures and Java/Python controls.
+`test_skill_code_only_incremental_update.py` now leaves sidecar creation to the
+fixture. A missing trusted root reaches the rendered program, keeps the prior
+products, creates no root/cache/AST, then recovers and repeats after an explicit
+marker write. Both module cases passed with the original rendered program.
+
+Under REQ-CORE-006-AC02, the four hosted read-only commands were reproduced
+loading the extractor package through Qt/QML metadata readers. The same
+validated literal decoders now live in a parser-independent transport module.
+The 190-case focused selection passes with the original no-import checks and
+extra saved Qt fact coverage, alongside typed transport and rejection tests.

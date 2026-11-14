@@ -6,6 +6,7 @@ import hashlib
 import json
 
 from graphify.ids import make_id
+from graphify.qt_metadata_transport import qt_metadata as qt_metadata
 
 
 def encode_qt(values: dict) -> dict:
@@ -30,32 +31,6 @@ def encode_qt(values: dict) -> dict:
     if len(literals) > 100:
         raise ValueError("QT_LIMIT: semantic fields exceed transport bound")
     return {"contract_version": 1, **values, "raw_values": literals}
-
-
-def qt_metadata(node: dict) -> dict:
-    """Reject corrupted transport instead of interpreting escaped display strings."""
-    value = node.get("metadata", {}).get("qt", {})
-    if not isinstance(value, dict) or value.get("contract_version") != 1:
-        return {}
-    result = json.loads(json.dumps(value))
-    literals = result.get("raw_values", {})
-    if not isinstance(literals, dict) or len(literals) > 100:
-        raise ValueError("QT_METADATA: malformed literal transport")
-    for key, encoded in literals.items():
-        if not isinstance(key, str) or not isinstance(encoded, str) or len(encoded) > 512:
-            raise ValueError("QT_METADATA: malformed literal field")
-        try:
-            decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
-            parts, current = key.split("/"), result
-            for part in parts[:-1]:
-                current = current[int(part)] if isinstance(current, list) else current[part]
-            if isinstance(current, list):
-                current[int(parts[-1])] = decoded
-            else:
-                current[parts[-1]] = decoded
-        except (ValueError, UnicodeError, KeyError, IndexError, TypeError) as exc:
-            raise ValueError("QT_METADATA: malformed literal field") from exc
-    return result
 
 
 def source_span(syntax) -> dict:

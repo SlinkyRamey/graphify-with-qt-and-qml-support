@@ -154,7 +154,7 @@ def _direct_member_scopes(nodes, edges):
             for caller, values in choices.items() if len(values) == 1}
 
 
-def resolve_free_function_calls(nodes, edges, raw_calls):
+def resolve_free_function_calls(nodes, edges, raw_calls, *, preserve_call_sites=False):
     """Consume source sites using the complete accepted view, without mutating context."""
     by_id = {node["id"]: node for node in nodes}
     bodies, prototypes, all_names = {}, {}, set()
@@ -195,7 +195,13 @@ def resolve_free_function_calls(nodes, edges, raw_calls):
     for node in nodes:
         if name := anonymous.add_declaration(node, definitions):
             all_names.add(name)
-    existing = {(edge.get("source"), edge.get("target")) for edge in edges if edge.get("relation") == "calls"}
+    def edge_key(source, target, file, location):
+        # Conditional branch comparisons need independent source lines; normal
+        # analysis retains its existing one-edge-per-pair view.
+        return (source, target, file, location) if preserve_call_sites else (source, target)
+
+    existing = {edge_key(edge.get("source"), edge.get("target"), edge.get("source_file"), edge.get("source_location"))
+                for edge in edges if edge.get("relation") == "calls"}
     for call in raw_calls:
         fact = _call(call)
         if not fact or call.get("callee") not in all_names:
@@ -256,9 +262,10 @@ def resolve_free_function_calls(nodes, edges, raw_calls):
             continue
         target = viable[0]
         pair = (call["caller_nid"], target)
-        if pair in existing or pair[0] == pair[1]:
+        key = edge_key(*pair, call["source_file"], call["source_location"])
+        if key in existing or pair[0] == pair[1]:
             continue
-        existing.add(pair)
+        existing.add(key)
         edges.append({"source": pair[0], "target": pair[1], "relation": "calls", "context": "cpp_free_function",
                       "confidence": "EXTRACTED", "source_file": call["source_file"], "source_location": call["source_location"], "weight": 1.0})
     # Legacy receiver-typed call transport describes the same source site. Once

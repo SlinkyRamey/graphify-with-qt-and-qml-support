@@ -4,10 +4,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from collections.abc import Mapping
 from pathlib import Path
 
 from graphify.ids import make_id
+from graphify.qt_metadata_transport import qml_metadata as qml_metadata
 from graphify.extractors.qml_source_identity import SourceInputIdentityError, relative_qml_source
 
 CONTRACT_VERSION = 1
@@ -39,28 +39,6 @@ def text(node, source: bytes) -> str:
 
 def field(node, name: str, source: bytes) -> str:
     return text(node.child_by_field_name(name), source)
-
-
-def qml_metadata(node: dict) -> dict:
-    """Read literal lookup values after graph sanitation/JSON round trips.
-
-    Display values retain Graphify's HTML escaping. Their bounded base64 copies
-    preserve semantic punctuation without trusting HTML as a lookup encoding.
-    """
-    meta = dict(node.get("metadata", {}).get("qml", {}))
-    raw = meta.get("raw_values", {})
-    if not isinstance(raw, Mapping) or len(raw) > 50:
-        raise ValueError("QML_METADATA: invalid literal transport mapping")
-    for key, value in raw.items():
-        if not isinstance(key, str) or not isinstance(value, str) or not isinstance(meta.get(key), str):
-            raise ValueError("QML_METADATA: invalid literal transport field")
-        if len(value) > 512:
-            raise ValueError("QML_LIMIT: literal transport exceeds its encoded bound")
-        try:
-            meta[key] = base64.b64decode(value, validate=True).decode("utf-8")
-        except (ValueError, UnicodeError) as exc:
-            raise ValueError("QML_METADATA: invalid literal transport encoding") from exc
-    return meta
 
 
 def encode_metadata(values: dict) -> dict:

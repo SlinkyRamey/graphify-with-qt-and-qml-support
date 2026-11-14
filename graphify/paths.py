@@ -626,6 +626,35 @@ def nfc(s: str) -> str:
     return unicodedata.normalize("NFC", s)
 
 
+def read_graph_json(path) -> dict:
+    """A graph file's data with one copy of each string its rows repeat."""
+    shared: dict[str, str] = {}
+
+    def share(row: dict) -> dict:
+        for field, value in row.items():
+            if type(value) is str:
+                row[field] = shared.setdefault(value, value)
+        return row
+
+    return json.loads(Path(path).read_text(encoding="utf-8"), object_hook=share)
+
+
+def consumed(rows: list):
+    """Each row in order, let go as it is taken, so a graph built from them never holds both."""
+    rows.reverse()
+    while rows:
+        yield rows.pop()
+
+
+def consumed_graph_rows(data: dict) -> dict:
+    """``data`` for networkx to build a graph from once, stamped as ``restore_arc_direction`` stamps it."""
+    for link in data["links"]:
+        if isinstance(link, dict) and "_src" not in link and "_tgt" not in link:
+            link["_src"] = link.get("source")
+            link["_tgt"] = link.get("target")
+    return dict(data, nodes=consumed(data["nodes"]), links=consumed(data["links"]))
+
+
 def restore_arc_direction(data: dict) -> dict:
     """Stamp each link's stored direction as ``_src``/``_tgt`` before loading.
 
@@ -652,23 +681,23 @@ def load_node_link_graph(path_or_data):
     The clustered writer stores edges under ``links`` (networkx's node-link
     default); the raw ``--no-cluster`` writer stores them under ``edges``.
     Consumers that call ``node_link_graph(data, edges="links")`` directly
-    raise ``KeyError: 'links'`` on a raw graph (#2212) — the ``except
-    TypeError`` fallback only covers old networkx without the ``edges``
-    kwarg, not the missing key. Normalize before parsing, same idiom as
-    affected.py/serve.py.
+    raise ``KeyError: 'links'`` on a raw graph (#2212). Normalize before
+    parsing, same idiom as affected.py/serve.py.
 
     Accepts a path (size-cap-checked via the security module, then parsed)
     or an already-parsed dict (no size check — the caller owns any cap).
     """
     from networkx.readwrite import json_graph
     from graphify.extractors.cpp_type_references import (
-        is_type_reference_unavailable, validate_type_reference_transport, validate_type_reference_graph)
+        validate_type_reference_graph, validate_type_reference_transport,
+    )
     data = path_or_data
-    if not isinstance(data, dict):
+    owned = not isinstance(data, dict)
+    if owned:
         p = Path(data)
         from graphify.security import check_graph_file_size_cap  # lazy: security imports paths
         check_graph_file_size_cap(p)
-        data = json.loads(p.read_text(encoding="utf-8"))
+        data = read_graph_json(p)
     if isinstance(data, dict):
         # Inspect modes and both aliases before adoption can hide a promise.
         validate_type_reference_transport(data, directed=data.get("directed", False))
@@ -686,28 +715,16 @@ def load_node_link_graph(path_or_data):
         from graphify.qt_import_retention import apply_import_retention, read_import_retention
         retained = read_import_retention(data, is_placeholder=_is_external_stub)
         data = apply_import_retention(data, retained, is_placeholder=_is_external_stub)
-        data = restore_arc_direction(data)
-    try:
-        graph = json_graph.node_link_graph(data, edges="links")
-    except TypeError:  # networkx too old for the edges kwarg; default is "links"
-        graph = json_graph.node_link_graph(data)
-    if not graph.is_directed():
-        # Export stores the producer's orientation in serialized endpoints.
-        # NetworkX's undirected iteration order cannot recover that contract.
-        for link in data.get("links", []):
-            metadata = link.get("metadata", {})
-            qml = metadata.get("qml", {}) if isinstance(metadata, dict) else {}
-            qt = metadata.get("qt", {}) if isinstance(metadata, dict) else {}
-            if not (is_type_reference_unavailable(link) or any(
-                    isinstance(value, dict) and value.get("contract_version") == 1 for value in (qml, qt))):
-                continue
-            source, target = link["source"], link["target"]
-            attributes = (graph.edges[source, target, link.get("key", 0)]
-                          if graph.is_multigraph() else graph.edges[source, target])
-            # Only an absent pair may be restored from serialized endpoints.
-            # Explicit partial/foreign markers remain visible for consumer
-            # rejection; reload must not turn corrupt transport into proof.
-            if "_src" not in attributes and "_tgt" not in attributes:
-                attributes["_src"], attributes["_tgt"] = source, target
+        # Release file-owned rows as NetworkX copies them. Keep caller-owned
+        # collections intact and preserve incomplete explicit direction markers.
+        if owned and isinstance(data.get("nodes"), list) and isinstance(data.get("links"), list):
+            data = consumed_graph_rows(data)
+        else:
+            data = restore_arc_direction(data)
+    # NetworkX supports the edges keyword across our dependency floor.
+    # Propagate bad-row errors without retrying a partly consumed stream.
+    graph = json_graph.node_link_graph(data, edges="links")
+    # Both row adapters stamp absent direction pairs before undirected
+    # NetworkX iteration can change endpoint order.
     validate_type_reference_graph(graph)
     return graph

@@ -14,6 +14,12 @@ _UPSTREAM_NATIVE_TESTS = frozenset({
     "test_4874_jvm_resolution.py", "test_4909_reference_binding_scale.py",
     "test_case_only_decl_ids_4904.py", "test_scala_extension_methods.py",
     "test_php_class_const_initializer_refs.py",
+    # INC133 retains the incoming core-language and native path-cache controls
+    # in Windows/macOS source lanes; artifact-only admission remains separate.
+    "test_python_bare_call_not_enclosing_method.py",
+    "test_rust_macro_argument_calls.py", "test_rust_scoped_call_resolution.py",
+    "test_go_method_value_indirect_calls.py", "test_go_package_var_type_refs.py",
+    "test_cache_windows_case_4925.py",
 })
 
 

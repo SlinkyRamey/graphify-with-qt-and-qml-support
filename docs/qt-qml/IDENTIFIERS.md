@@ -231,3 +231,8 @@ INC-QML-132 is the upstream0.9.100 compatibility and fork-merge delivery increme
 REQ-CORE-005-AC01/AC02/AC03 independently identify accepted JVM package parity,
 conservative rejection, and producer/persistence/context transport. These extend
 the shared CORE namespace without renumbering any Qt/QML identity or alias.
+
+INC-QML-133 is the reviewed upstream0.9.101 source-authority refresh. Its new
+REQ-CORE-006-AC01/AC02/AC03/AC04 identify scoped source resolution, promised
+transport/frame preservation, independent evidence reconciliation and invocation/
+cache/persistence lifetime. Existing Qt/QML identities and aliases remain unchanged.

@@ -41,8 +41,9 @@ def _section(body: str, start: str, end: str) -> str:
     return body.split(start, 1)[1].split(end, 1)[0]
 
 
-def _run_code(script: str, *, cwd: Path, root: Path) -> subprocess.CompletedProcess[str]:
-    script = script.replace("INPUT_PATH", root.as_posix()).replace("IS_DIRECTED", "False")
+def _run_code(script: str, *, cwd: Path) -> subprocess.CompletedProcess[str]:
+    # Run against the fixture as prepared, including an absent Step 1 sidecar.
+    script = script.replace("IS_DIRECTED", "False")
     env = {
         **os.environ,
         "GRAPHIFY_OUT": "graphify-out",
@@ -185,11 +186,11 @@ assert saved == 1
         "files": {"code": [str(changed), str(added)], "document": [str(notes)]},
     }), encoding="utf-8")
 
-    _run_code(ast_blocks[0], cwd=tmp_path, root=root)
-    _run_code(empty_semantic_blocks[0], cwd=tmp_path, root=root)
+    _run_code(ast_blocks[0], cwd=tmp_path)
+    _run_code(empty_semantic_blocks[0], cwd=tmp_path)
     semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
     assert semantic["nodes"] == []
-    _run_code(part_c_blocks[0], cwd=tmp_path, root=root)
+    _run_code(part_c_blocks[0], cwd=tmp_path)
 
     extraction = json.loads(extraction_path.read_text(encoding="utf-8"))
     extraction_ids = {node["id"] for node in extraction["nodes"]}
@@ -197,7 +198,7 @@ assert saved == 1
     assert any("added_symbol" in node_id for node_id in extraction_ids)
     assert "stale_semantic" not in extraction_ids
 
-    _run_code(merge_blocks[0], cwd=tmp_path, root=root)
+    _run_code(merge_blocks[0], cwd=tmp_path)
     cache_after = {
         path.relative_to(semantic_cache).as_posix(): path.read_bytes()
         for path in semantic_cache.rglob("*") if path.is_file()
@@ -229,18 +230,20 @@ def test_codex_part_a_missing_trusted_root_rejects_before_ast_then_recovers(tmp_
     graph.write_bytes(b'{"nodes":[{"id":"previous"}],"edges":[]}')
     (output / ".graphify_detect.json").write_text(json.dumps({
         "files": {"code": [str(source)]}}), encoding="utf-8")
+    root_marker = output / ".graphify_root"
     before = {path.name: path.read_bytes() for path in output.iterdir()}
     with pytest.raises(subprocess.CalledProcessError) as rejected:
-        _run_code(part_a, cwd=tmp_path, root=tmp_path)
+        _run_code(part_a, cwd=tmp_path)
     assert ".graphify_root" in rejected.value.stderr
     assert {path.name: path.read_bytes() for path in output.iterdir()} == before
+    assert not root_marker.exists()
     assert not (output / "cache").exists()
     assert not (output / ".graphify_ast.json").exists()
-    (output / ".graphify_root").write_text(str(tmp_path), encoding="utf-8")
-    _run_code(part_a, cwd=tmp_path, root=tmp_path)
+    root_marker.write_text(str(tmp_path), encoding="utf-8")
+    _run_code(part_a, cwd=tmp_path)
     ast_path = output / ".graphify_ast.json"
     accepted = ast_path.read_bytes()
     assert any("current_symbol" in node["id"] for node in json.loads(accepted)["nodes"])
     assert graph.read_bytes() == before["graph.json"]
-    _run_code(part_a, cwd=tmp_path, root=tmp_path)
+    _run_code(part_a, cwd=tmp_path)
     assert ast_path.read_bytes() == accepted and graph.read_bytes() == before["graph.json"]

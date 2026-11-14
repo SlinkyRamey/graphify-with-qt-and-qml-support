@@ -1,4 +1,4 @@
-"""Part A supplies a trusted explicit root independent of its cache location (#3727).
+"""Part A trusts its root sidecar (#4762) and keeps cache paths independent (#3727).
 
 Inspect the actual emitted multiline call structurally. Execute its complete
 program twice, changing only cache_root, to retain the original identity proof
@@ -67,7 +67,7 @@ def test_part_a_passes_an_explicit_root(platform: gen.Platform):
 
 def test_relocating_only_the_cache_does_not_rename_part_a_nodes(tmp_path: Path, monkeypatch):
     """Run actual Part A twice; only its cache keyword changes, preserving IDs and provenance."""
-    scan_root = tmp_path / "proj"
+    scan_root = tmp_path / "proj & 'quoted'"
     (scan_root / "pkg").mkdir(parents=True)
     module = scan_root / "pkg" / "mod.py"
     module.write_text("def hello():\n    return 1\n", encoding="utf-8")
@@ -75,7 +75,7 @@ def test_relocating_only_the_cache_does_not_rename_part_a_nodes(tmp_path: Path, 
     elsewhere.mkdir()
     output = tmp_path / "graphify-out"
     output.mkdir()
-    (output / ".graphify_root").write_text(str(scan_root), encoding="utf-8")
+    (output / ".graphify_root").write_text(str(scan_root), encoding="utf-8-sig")
     (output / ".graphify_detect.json").write_text(json.dumps({
         "files": {"code": [str(module)]}}), encoding="utf-8")
     monkeypatch.chdir(tmp_path)

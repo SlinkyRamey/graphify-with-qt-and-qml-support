@@ -160,11 +160,9 @@ class CppMapping:
                               and (not constructor or syntax_matches(node, declaration, self.unit.source, constructor_owner, definition_site=True))]
         if not class_id and definition_matches:
             matches = definition_matches
-        if not class_id and "::" in name and not definition_matches:
-            owners = {owner for candidate in matches for owner in self.parents.get(candidate, ())}
-            wanted = name.split("::")[-2]
-            owners = {node["id"] for node in self.nodes if node["id"] in owners and _label(node) == wanted and node.get("_callable_class")}
-            class_id = next(iter(owners)) if len(owners) == 1 else ""
+        # A generic parent can describe an ordinary C++ member even without a
+        # Qt overlay for its class. Keep the exact callable as source evidence;
+        # bind_classes owns admission of a complete native class body.
         qualified = _qualified(self.unit, declaration, name)
         record = self._record(declaration, short, qualified, matches)
         # A producer-proven free definition retains its callable/body for SDK
@@ -244,7 +242,10 @@ class CppMapping:
             class_id = definition["node_id"]
             candidates = {node["id"] for node in self.nodes if node.get("_callable") and _label(node) == record["name"]
                           and class_id in self.class_parents.get(node["id"], ()) and constructor_class_authorized(node)}
-            if owners:
+            # A constructor already has occurrence and signature proof from
+            # the guard above. Class admission can confirm that callable's
+            # parent, but same-named header overloads cannot replace it.
+            if owners or record["out_of_line_constructor"]:
                 candidates.intersection_update(record["candidates"])
             record.update(class_id=class_id, class_name=name, node_id=next(iter(candidates)) if len(candidates) == 1 else "",
                           status="resolved" if len(candidates) == 1 else "ambiguous" if candidates else "unavailable")

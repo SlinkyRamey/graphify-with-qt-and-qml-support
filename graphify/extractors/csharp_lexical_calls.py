@@ -64,7 +64,7 @@ def local_function_ids(nodes, edges=()):
 class CSharpLexicalCalls:
     """One source index and one producer-bound allocation map, without ambient state."""
 
-    def __init__(self, root, source, stem, *, signature):
+    def __init__(self, root, source, stem, *, signature, conditional_at=None):
         self.source, self.stem = source, stem
         scopes, parents, fingerprints, scope_nodes = {}, {}, {}, {}
         functions, records, children, data = {}, {}, defaultdict(list), defaultdict(set)
@@ -76,7 +76,7 @@ class CSharpLexicalCalls:
         while pending:
             node, outer_scope, owner, conditional = pending.pop()
             nodes.append(node)
-            conditional |= node.type.startswith("preproc_")
+            conditional |= node.type.startswith("preproc_") or (conditional_at is not None and conditional_at(node))
             conditions[node.id] = conditional
             scope = outer_scope
             if node.type in _SCOPES:
