@@ -78,7 +78,6 @@ def _validate(data, root):
     members = []
     for source, label, family, role, token in (
         ("include/worker.h", ".run()", "cpp_member", "declaration", b"void run();"),
-        ("src/worker.cpp", "Worker::run()", "cpp_member", "definition", b"void Worker::run() {}"),
         ("include/worker.h", ".Worker()", "cpp_constructor", "declaration", b"explicit Worker(int initial);"),
         ("src/worker.cpp", "Worker::Worker()", "cpp_constructor", "definition", b"Worker::Worker(int initial) {}"),
     ):
@@ -88,12 +87,25 @@ def _validate(data, root):
         assert base64.b64decode(metadata["owner_b64"]) == b"Worker"
         _span(sources[source], metadata["span"], token)
         members.append(node)
+    # An exact unconditional include and signature join the two method sites.
+    # Its declaration remains independently validated above; the folded body
+    # must still address the original bytes in its actual implementation file.
+    run = members[0]
+    typed_run = run["metadata"]["cpp_member"]
+    typed_definition = typed_run.get("definition")
+    assert isinstance(typed_definition, dict)
+    assert run["definition_file"] == "src/worker.cpp" and run["definition_location"] == "L4"
+    assert typed_definition["role"] == "definition" and typed_definition["ambiguous"] is False
+    assert base64.b64decode(typed_definition["owner_b64"]) == b"Worker"
+    assert base64.b64decode(typed_definition["name_b64"]) == b"Worker::run"
+    assert typed_definition["signature"] == typed_run["signature"]
+    _span(sources[run["definition_file"]], typed_definition["span"], b"void Worker::run() {}")
     # INC-QML-62's structural declarator span is independently byte-checked
     # before physical offsets are removed by the LF/CRLF semantic projection.
     declarator = _node(data, "include/worker.h", ".run()", "cpp_declarator")["metadata"]["cpp_declarator"]
     assert declarator["contract_version"] == 1 and declarator["kind"] == "method"
     _span(sources["include/worker.h"], declarator["span"], b"run()")
-    declaration, definition = (node["metadata"]["cpp_constructor"] for node in members[2:])
+    declaration, definition = (node["metadata"]["cpp_constructor"] for node in members[1:])
     assert definition["owner_bound"] is True and definition["type_authorized"] is True
     assert declaration["signature"] == definition["signature"]
     # The cross-file declaration's copied definition span belongs to the proven
@@ -109,7 +121,7 @@ def _validate(data, root):
                  for edge in _links(data)}
     assert (implementation["id"], header["id"], "imports", "import") in endpoints
     assert (owner["id"], members[0]["id"], "method", "") in endpoints
-    assert (owner["id"], members[3]["id"], "method", "cpp_constructor_owner") in endpoints
+    assert (owner["id"], members[2]["id"], "method", "cpp_constructor_owner") in endpoints
     assert (caller["id"], members[0]["id"], "calls", "call") in endpoints
 
 
@@ -126,6 +138,8 @@ def _semantic(data):
             assert family in {"cpp_class", "cpp_member", "cpp_constructor", "cpp_constructor_types", "cpp_declarator", "cpp_function"}
             for field in ("span", "definition_span", "source_size"):
                 fact.pop(field, None)
+            if family == "cpp_member" and "definition" in fact:
+                fact["definition"].pop("span")
             if family == "cpp_constructor_types":
                 for include in fact["includes"]:
                     include.pop("span")
@@ -192,6 +206,7 @@ def test_req_qml003_ac04_non_qt_cpp_cli_newlines_keep_source_ownership_and_topol
 
 @pytest.mark.parametrize("corruption", ["span", "consistent_span", "source_size", "include",
                                        "definition_span", "endpoint", "role", "member_omission",
+                                       "member_body_omission", "member_body_span", "member_body_file",
                                        "identity_permutation", "declarator_span", "declarator_consistent_span",
                                        "declarator_kind", "declarator_omission", "function_span", "function_role", "function_omission"])
 def test_req_qml014_ac04_non_qt_cpp_newline_oracle_rejects_corruption(cpp_builds, corruption):
@@ -237,6 +252,18 @@ def test_req_qml014_ac04_non_qt_cpp_newline_oracle_rejects_corruption(cpp_builds
         edge["target"] = _node(changed, "src/worker.cpp", "useWorker()")["id"]
     elif corruption == "role":
         _node(changed, "include/worker.h", ".run()")["metadata"]["cpp_member"]["role"] = "definition"
+    elif corruption.startswith("member_body_"):
+        for data in (reference, changed):
+            node = _node(data, "include/worker.h", ".run()")
+            body = node["metadata"]["cpp_member"]
+            if corruption == "member_body_omission":
+                body.pop("definition")
+            elif corruption == "member_body_file":
+                node["definition_file"] = "include/worker.h"
+            else:
+                span = body["definition"]["span"]
+                span["start_byte"] += 1
+                span["start_column"] += 1
     elif corruption == "identity_permutation":
         first = _node(changed, "include/worker.h", "worker.h")["id"]
         second = _node(changed, "include/worker.h", "Worker")["id"]

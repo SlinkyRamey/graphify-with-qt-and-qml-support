@@ -326,41 +326,44 @@ def affected_nodes(
     queue: deque[tuple[str, int]] = deque([(seed, 0)])
     hits: list[AffectedHit] = []
 
-    # #1669: seed the reverse walk with the root's own member nodes (one outward
-    # `method`/`contains` hop). A caller can bind to a class's method node rather
-    # than the class node itself (e.g. `Service.call` resolves to the `def
-    # self.call` node, #1634), so those callers are unreachable from the class
-    # otherwise. The member nodes are seeds only (not reported as hits), and
+    # #1669: seed the reverse walk with the root's member subtree. A caller
+    # can bind to a method inside a nested class rather than to the root
+    # class itself. The member nodes are seeds only (not reported as hits), and
     # `method`/`contains` stay out of the general relation-filtered walk, so this
     # adds no forward noise anywhere else.
     directed = graph.is_directed()
     incoming_by_target = defaultdict(list)
-    if hasattr(graph, "out_edges"):
-        member_edges = cast(nx.DiGraph, graph).out_edges(seed, data=True)
-    else:
+    members_by_owner = defaultdict(list)
+    if not directed:
         # Index accepted logical pairs once. Undirected adjacency iteration
         # cannot recover direction; rescanning every edge per BFS node is also
         # unnecessary. Directed graphs retain their efficient native indexes.
-        member_edges = []
         for source, target, data in graph.edges(data=True):
             endpoints = logical_endpoints(source, target, data, directed=False)
             if endpoints is None:
                 continue
             source, target = endpoints
             incoming_by_target[target].append((source, target, data))
-            if source == seed:
-                member_edges.append((source, target, data))
-    for _s, member, data in member_edges:
-        endpoints = logical_endpoints(_s, member, data, directed=directed)
-        if endpoints is None or endpoints[0] != seed:
-            continue
-        _s, member = endpoints
-        if str(data.get("relation", "")) not in ("method", "contains"):
-            continue
-        member = str(member)
-        if member not in seen:
-            seen.add(member)
-            queue.append((member, 0))
+            if data.get("relation") in ("method", "contains"):
+                members_by_owner[source].append((source, target, data))
+    member_queue = deque([seed])
+    while member_queue:
+        parent = member_queue.popleft()
+        if directed:
+            member_edges = cast(nx.DiGraph, graph).out_edges(parent, data=True)
+        else:
+            member_edges = members_by_owner.get(parent, ())
+        for source, target, data in member_edges:
+            if data.get("relation") not in ("method", "contains"):
+                continue
+            endpoints = logical_endpoints(source, target, data, directed=directed)
+            if endpoints is None or endpoints[0] != parent:
+                continue
+            member = str(endpoints[1])
+            if member not in seen:
+                seen.add(member)
+                queue.append((member, 0))
+                member_queue.append(member)
 
     supertype_cache: dict[str, list[str]] = {}
     # Overridden members walked without being reported; one that a real edge
@@ -494,7 +497,8 @@ def load_graph(path: Path) -> nx.Graph:
     from networkx.readwrite import json_graph
 
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        from graphify.paths import consumed, read_graph_json
+        raw = read_graph_json(path)
     except (json.JSONDecodeError, OSError) as exc:
         raise RuntimeError(
             f"Cannot read graph file {path}: {exc}. "
@@ -509,7 +513,5 @@ def load_graph(path: Path) -> nx.Graph:
     # (__main__.py) already normalizes this (#738; same class as #1198).
     if "links" not in raw and "edges" in raw:
         raw = dict(raw, links=raw["edges"])
-    try:
-        return json_graph.node_link_graph(raw, edges="links")
-    except TypeError:
-        return json_graph.node_link_graph(raw)
+    raw = dict(raw, nodes=consumed(raw["nodes"]), links=consumed(raw["links"]))
+    return json_graph.node_link_graph(raw, edges="links")

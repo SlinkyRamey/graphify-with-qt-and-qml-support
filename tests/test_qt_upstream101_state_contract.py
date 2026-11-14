@@ -131,16 +131,19 @@ def test_REQ_QML_012_AC02_alias_rejection_preserves_disk_and_allows_repair(tmp_p
     assert first == second and path.read_bytes() == repaired
 
 
-def test_REQ_QML_011_AC03_schema41_retires40_without_rekeying_semantics(tmp_path, monkeypatch):
+@pytest.mark.parametrize("predecessor", [40, 41, 45])
+def test_REQ_QML_011_AC03_schema41_retires40_without_rekeying_semantics(
+    tmp_path, monkeypatch, predecessor,
+):
     """A predecessor AST entry cannot become current evidence; semantic lifetime is separate."""
     source = tmp_path / "Sample.py"
     source.write_text("def sample(): return 1\n", encoding="utf-8")
     payload = {"nodes": [{"id": "sample"}], "edges": [], "hyperedges": []}
     with monkeypatch.context() as old:
-        old.setattr(cache, "_AST_CACHE_SCHEMA", 40)
+        old.setattr(cache, "_AST_CACHE_SCHEMA", predecessor)
         cache.save_cached(source, payload, root=tmp_path, kind="ast")
         cache.save_cached(source, payload, root=tmp_path, kind="semantic")
-    assert cache._AST_CACHE_SCHEMA == 41
+    assert cache._AST_CACHE_SCHEMA == 46
     assert cache.load_cached(source, tmp_path, kind="ast") is None
     assert cache.load_cached(source, tmp_path, kind="semantic") == payload
     cache.save_cached(source, payload, root=tmp_path, kind="ast")

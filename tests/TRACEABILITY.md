@@ -6147,3 +6147,29 @@ failed lock-file open/setup. It retains the foreign lock file and permits its
 existing unlocked fallback with a warning; this does not prove serialized
 concurrent writers on filesystems lacking a working lock API. No test, lock
 deadline, platform selection or protection was relaxed to qualify this change.
+
+## INC-QML-134 — Upstream 0.9.108 integration
+
+| Acceptance | Evidence and boundary |
+| --- | --- |
+| REQ-CORE-006-AC01; REQ-QML-022-AC02/AC06 | `test_cpp_conditional_initializers.py::test_repeated_conditional_calls_preserve_each_site_without_adding_symbols`, `test_cpp_template_members.py::test_primary_template_owner_preserves_qualifiers_namespace_and_guards`, `test_cpp_free_body_proof.py`, `test_csharp_member_nodes.py::test_explicit_interface_indexers_keep_their_own_calls` and `test_csharp_lexical_scope_boundaries.py::test_req_qml022_ac02_constructor_local_uses_existing_constructor_owner`. The native correction selection passed 231 tests, including the unchanged historical C++ cache/Panel link tests and C# overload controls. |
+| REQ-CORE-006-AC02; REQ-QML-013-AC04 | `test_affected_member_seed.py` exercises nested callers across directed and reversed-undirected storage, with a malformed partial edge. `test_qt_qml_search.py::test_shortest_path_uses_public_qt_metadata_without_guessing_unknown_names` reproduces the upstream false refusal before validating the merged rule. Graph/path/reload/transport selection passed 415 with one skip; the final membership selection passed eight. |
+| REQ-CORE-006-AC03; REQ-QML-014-AC04 | `test_upstream_qt_export_integration.py::test_req_qml014_ac04_typed_semantic_replacement_retains_retry_authority` exercises build_merge and the real atomic replacement seam. It verifies unrelated semantic-loss rejection, retained bytes and accounting, same-object retry and cleanup. |
+| REQ-CORE-006-AC04; REQ-QML-011-AC01/AC03/AC04 | `test_update_incremental.py::test_cli_update_reprojects_after_extractor_epoch_changes`, `test_cli_update_reconciles_live_sources_excluded_by_gitignore` and `test_watch.py::test_watch_atomic_ignore_replacement_reconciles_published_source` passed on Windows. The predecessor-cache matrix intentionally admits schemas 40, 41 and 45 only under their historical profile; current tests advance the schema-46 namespace and the real fault destination together. |
+| REQ-QML-001-AC01/AC03; REQ-CORE-004-AC02/AC03 | Frozen lock resolves offline. The five skill generator validators pass for 134 artifacts. Installed-host and Part A tests passed 105 cases with three skips. The package, full Windows suite and hosted run need separate receipts for the final source. |
+
+Run with the isolated locked Python 3.12 environment and `python -m pytest
+--no-cov -p no:cacheprovider` on the named selections. Reports and preserved
+local results are under ignored `.venv/upstream-sync-maintenance/20261114-upstream-0108/`.
+No runtime Qt SDK, macOS or resulting-branch behavior is inferred from focused
+Windows results.
+
+The C++ header cap boundary exercises both facade and direct read paths using
+`test_4978_reconcile_cost.py`. The dialect oracle keeps explicit ordinary and
+cutoff cases, and the combined I/O witness detects duplicate reads through
+either file API. `test_cpp_incremental_type_resolution.py` exercises the
+upstream one-file path with a CUDA C++ source and the retained full Qt-capable
+cohort with the original C++ suffix. Both assert the retained type/call evidence.
+Whole-tree Pyright continues to report inherited findings, including the CLI
+dispatcher and generic extractor analysis limits present in both baselines.
+Those findings are separate from executed test and package results.

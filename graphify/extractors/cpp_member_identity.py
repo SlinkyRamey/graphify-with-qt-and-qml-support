@@ -204,6 +204,12 @@ def proven_member_pairs(nodes, edges):
                          and edge.get("source_location") == target.get("source_location") for edge in edges)]
         if len(found) != 1:
             continue
+        declaration_record, definition_record = (candidate.get("_cpp_member_records", ())
+                                                 for candidate in (found[0], node))
+        if (len(declaration_record) == len(definition_record) == 1
+                and declaration_record[0].get("signature") and definition_record[0].get("signature")
+                and declaration_record[0]["signature"] != definition_record[0]["signature"]):
+            continue  # Additional exact return/noexcept syntax can disprove a typed pair.
         pairs.append((node, found[0], owner))
     # Copies of one accepted source occurrence are not competing bodies. Two
     # distinct bodies retain their source facts/IDs for conservative resolution.
@@ -228,6 +234,7 @@ def canonicalize_cpp_members(nodes, edges, raw_calls=()):
             # declaration proof or lending its span new native authority.
             target.update(definition_file=node["source_file"], definition_location=node["source_location"],
                           definition_span=dict(fact["span"]))
+            target.setdefault("_cpp_member_records", []).extend(node.get("_cpp_member_records", ()))
             dropped.add(id(node))
         else:
             node["id"] = target["id"]

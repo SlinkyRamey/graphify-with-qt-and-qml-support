@@ -45,7 +45,7 @@ def test_namespace_qualified_owner_is_not_a_same_named_included_type(tmp_path):
     cpp.write_text('#include "left.h"\n#include "right.h"\nvoid Left::Foo::run(){say();}\nvoid Left::Foo::say(){}', encoding="utf-8")
     r = extract([a, b, cpp], root=tmp_path, parallel=False, cache_root=tmp_path)
     nodes = {n["id"]: n for n in r["nodes"]}
-    caller = next(n["id"] for n in r["nodes"] if n["label"] == "Left::Foo::run()")
+    caller = next(n["id"] for n in r["nodes"] if n.get("_cpp_qualified") == "Left::Foo::run")
     calls = [e for e in r["edges"] if e["source"] == caller and e["relation"] == "calls"]
     assert calls
     assert all(nodes[e["target"]]["source_file"] == "left.h" for e in calls)
@@ -80,7 +80,13 @@ def test_distinct_namespace_types_keep_their_exact_included_owner(tmp_path):
     cpp = tmp_path / "main.cpp"
     cpp.write_text('#include "foo.h"\nvoid Right::Foo::run(){say();}', encoding="utf-8")
     r = extract([header, cpp], root=tmp_path, parallel=False, cache_root=tmp_path)
-    caller = next(n["id"] for n in r["nodes"] if n["label"] == "Right::Foo::run()")
+    caller_node, = [n for n in r["nodes"] if n.get("_cpp_qualified") == "Right::Foo::run"]
+    caller = caller_node["id"]
+    assert caller_node["source_file"] == "foo.h" and caller_node["definition_file"] == "main.cpp"
+    body = caller_node["metadata"]["cpp_member"]["definition"]
+    assert body["role"] == "definition" and decoded(body["owner_b64"]) == "Right::Foo"
+    span = body["span"]
+    assert cpp.read_bytes()[span["start_byte"]:span["end_byte"]] == b"void Right::Foo::run(){say();}"
     # The fork already retains literal scoped class identities. Unlike upstream's
     # legacy collapsed-ID fixture, these are two independently proven classes;
     # require the exact Right owner/callee and reject every Left relationship.

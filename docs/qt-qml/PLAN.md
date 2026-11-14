@@ -5979,3 +5979,24 @@ against the pre-gate mutation. A pass obtained by bypassing that parser boundary
 cannot establish acceptance. Hook production behavior and tool qualification
 remain unchanged. New source full/static/generated/native/installed/hosted gates
 must finish independently; all failed and interrupted attempts stay retained.
+
+### INC-QML-134 — Sync the fork with Graphify 0.9.108
+
+Integrate upstream `52cb28218eea0c68d80a9f4b2ae102d2fa63e267` for fork
+`v8` at `bcda696f2d1f78844dcfda23b497898077a2b869`. Reuse the committed
+0.9.101 compatibility checkpoint `fe809a17` in a separate sync branch. This
+covers 309 upstream commits, including 252 beyond the checkpoint. Review in a
+fork-default PR. The separately reviewed MATLAB/Simulink and upstream submission
+branches keep their own scope.
+
+| Boundary | Required acceptance |
+| --- | --- |
+| Source resolution | Preserve C++ branch site provenance and proven member ownership, and use the exact admitted C# body owner (REQ-CORE-006-AC01, REQ-QML-022-AC02/AC06). |
+| Graph consumers and persistence | Preserve logical membership and public Qt search terms, reject malformed transport, and retain transient accounting across failed export (REQ-CORE-006-AC02/AC03, REQ-QML-013-AC04, REQ-QML-014-AC04). |
+| Watch and update | Keep scoped manifest fast paths under a compatible profile, with full refresh on changed policy and tested cache replacement recovery (REQ-CORE-006-AC04, REQ-QML-011-AC01/AC03/AC04). |
+| Packaging and delivery | Use the reconciled lock, authoritative skill generator, separate core/QML installed profiles and the existing hosted platform matrix (REQ-QML-001-AC01/AC03, REQ-CORE-004-AC02/AC03). |
+
+Exit requires targeted source and generated checks, AST-only repository update,
+and exact PR validation. A subsequent authorized fork merge requires separate
+resulting-commit validation. The canonical workspace retains unrelated
+coverage/results with pre-change byte hashes.

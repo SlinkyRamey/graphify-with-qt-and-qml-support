@@ -1,6 +1,6 @@
 # graphify reference: extraction subagent prompt (compact)
 
-Load this in Step 3 Part B when the corpus has at least one doc, paper, or image chunk. A pure-code corpus skips Part B and never reads this file. Each semantic subagent receives the prompt below verbatim (substitute FILE_LIST, CHUNK_NUM, TOTAL_CHUNKS, and DEEP_MODE).
+Load this in Step 3 Part B when the corpus has at least one doc, paper, or image chunk. A pure-code corpus skips Part B and never reads this file. Each semantic subagent receives the prompt below verbatim (substitute FILE_LIST, CHUNK_NUM, TOTAL_CHUNKS, DEEP_MODE, and CHUNK_PATH).
 
 ```
 You are a graphify extraction subagent. Read the files listed and extract a knowledge graph fragment.
@@ -22,7 +22,6 @@ Rules:
 - INFERRED: reasonable inference (shared structure, implied dependency)
 - AMBIGUOUS: uncertain — flag it, do not omit
 - Code files: semantic edges AST cannot find. Do not re-extract imports. When adding `calls` edges: source is the caller, target is the callee, never reversed; keep `calls` within one language.
-- [Qt/QML] Preserve source-backed AST bridge IDs, contexts, spans and direction. Do not invent label-based QML/JavaScript/C++ links, synchronous signal delivery or QML `id`/C++ `objectName` equivalence; connections, emissions and meta-object accesses are distinct from calls.
 - Doc/paper files: named concepts, entities, citations. Store rationale (WHY decisions were made) as a `rationale` attribute on the relevant node, not as a separate node. Use `file_type:"rationale"` for concept-like nodes (ideas, principles, mechanisms) and `file_type:"concept"` for named concepts. `file_type` MUST be one of exactly these six values: `code`, `document`, `paper`, `image`, `rationale`, `concept`. Any other value is invalid and will be rejected.
 - Image files: use vision — understand what the image IS, not just OCR
 - DEEP_MODE (if --mode deep): be aggressive with INFERRED edges — indirect deps, shared assumptions, latent couplings. Mark uncertain ones AMBIGUOUS instead of omitting.
@@ -33,10 +32,11 @@ Rules:
 
 Node ID format: lowercase, word characters only (`[^\W]` after casefolding — `[a-z0-9_]` for ASCII input, but non-ASCII letters and digits are kept as-is), no dots or slashes. Format `{stem}_{entity}` where stem is the full repo-relative path with the extension dropped, every segment joined with `_` (each lowercased with non-alphanumeric chars replaced by `_`) and entity is the symbol name similarly normalized. Use every directory level, not just the immediate parent. `src/auth/session.py` + `ValidateToken` → `src_auth_session_validatetoken`. Top-level files use just the filename stem. This must match the AST extractor's ID. Never append chunk or sequence suffixes — IDs must be deterministic from the label alone.
 
-[Qt/QML] Reuse existing Qt/QML AST IDs verbatim when referencing those facts. Their component/member scope and exact source identity are already encoded; never replace them with a label-only ID or create a duplicate fact to satisfy the generic ID guidance above.
-
 Output exactly this JSON (no other text):
 {"nodes":[{"id":"auth_session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale|concept","source_file":"<FILE_LIST path verbatim>","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"<FILE_LIST path verbatim>","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"<FILE_LIST path verbatim>"}],"input_tokens":0,"output_tokens":0,"coverage":{"<FILE_LIST path verbatim>":0}}
 
 source_file RULE: set source_file to the FILE_LIST path for that file VERBATIM (absolute, no shortening to basename, no re-relativizing, no separator change). Keeps full build and --update on one base so build_merge's replace matches instead of duplicating.
+
+Then write the JSON to disk with the Write tool at this exact absolute path (a relative path resolves against an undefined cwd and the file is silently lost):
+CHUNK_PATH
 ```

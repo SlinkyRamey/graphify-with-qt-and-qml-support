@@ -3677,3 +3677,51 @@ set in unchanged traversal order; and owns no I/O, cache, graph mutation or
 persistence. Adapter creation, exception fallback, dispatch and publication remain
 in `_rebuild_code`. The same before/after cases and a fresh type analysis qualify
 the move without suppressing a diagnostic or changing accepted behavior.
+
+## INC-QML-134 upstream 0.9.108 composition
+
+The manual update owner derives a manifest change set only under compatible
+extraction, discovery and publication settings. The scan digest can change
+during ordinary file additions/deletions, and relative manifests can travel
+with a copied checkout. An unreadable baseline, stale Qt state or projection,
+changed resolution inputs, or excluded live sources requires the full path.
+Watcher policy events may name an atomic replacement destination. On Linux the
+observer also updates its pruned directory schedule before reconciling the
+accepted corpus. Nonblocking derived requests use their own pending marker.
+The lock/drain, manifest classification and borrowed resolution projection have
+separate helpers, with graph admission and publication owned by the same
+rebuild. The full raw AST epoch advances to 46. Semantic caching and prior output
+retention retain their existing owners.
+
+The source-link loader validates known typed aliases and logical direction
+before consuming file-owned JSON rows. Caller-owned transport remains reusable.
+The affected traversal indexes logical membership once and walks the accepted
+nested members. MCP filtering can recognize bounded public Qt/QML projections
+on candidate endpoints. The generic unknown-token screen and malformed typed
+transport rejections remain in force.
+
+Reconciliation records exact replaced sources for semantic shrink accounting.
+A typed export validates and retains that accounting until atomic replacement
+succeeds, then clears it. Publication omits transient accounting. C++ producer
+views preserve distinct conditional call sites when explicitly requested
+internally. Proven member bodies continue to use allocated declaration IDs.
+C++ lexical header admission reuses the bounded dispatcher prefix. Direct
+header classification reads at most the same cap. A joined member's original
+body bytes remain independently verifiable against its implementation file.
+C# indexer accessors contribute calls under the canonical indexer. Explicit
+constructors are separate owners with their enclosing type scope.
+
+Legacy size exceptions retain their existing owners. These measured files
+combine significant incoming upstream changes with existing fork behavior.
+Ceilings apply to this increment. Follow the owning migration or focused
+characterization path before further cross-responsibility growth.
+
+| Owner / file | Physical lines | Ceiling | Review or extraction boundary |
+| --- | ---: | ---: | --- |
+| Graph / affected.py, build.py, paths.py | 517, 3634, 730 | 530, 3650, 750 | Accepted membership, assembly and transport adaptation |
+| State / cache.py, watch.py | 2075, 4106 | 2100, 4150 | Cache identity, request coordination and publication |
+| User interfaces / cli.py, serve.py | 6273, 3854 | 6300, 3900 | Command dispatch and MCP graph consumers |
+| Output / export.py | 1589 | 1610 | Validation, accounting and publication |
+| Extraction / extract.py, engine.py, resolution.py, cross_repo_calls.py | 13895, 12605, 5097, 334 | 13950, 12700, 5150, 350 | Source producer migration and per-run resolution ownership |
+| Test owners / test_watch.py, test_install_references.py, test_update_incremental.py | 6235, 656, 427 | 6300, 670, 450 | Existing watcher, install and refresh fixture families |
+| C# source fixture / test_csharp_member_nodes.py | 323 | 335 | Incoming source member and overload ownership fixtures |

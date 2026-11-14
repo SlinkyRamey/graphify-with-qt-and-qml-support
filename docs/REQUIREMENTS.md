@@ -910,6 +910,13 @@ explicitly separate from proven receiver binding. Generic owner attachment must
 not override specialized constructor rejection. Python, Go and Rust resolution
 controls retain their own lexical and language boundaries, including project-
 boundary metadata changes at unchanged source bytes between invocations.
+Distinct proven C++ call sites remain visible through conditional parsing.
+Proven C++ declaration/body pairs retain both source sites and their original
+byte spans after a join. Ambiguous source sites supply no definition navigation.
+C and C++ header classification uses one bounded prefix read per dispatch and
+retains lexical dialect recognition.
+An admitted C# constructor or source-owned indexer attributes supported body
+calls to the exact owner, preserving overload and explicit-interface boundaries.
 `REQ-CORE-006-AC01`
 
 2 - Graph endpoint aliases obey the source language and the authoritative caller
@@ -922,6 +929,9 @@ inputs reject without losing prior accepted graph bytes or failure accounting.
 including same-ID and multi-source aliases, while sourceless metadata cannot
 outvote a source declaration. Code-only scope, deduplicated shrink accounting and
 slice-complete checkpoints cannot silently certify omitted accepted input.
+An explicitly replaced source can retire its old semantic nodes. Unrelated
+semantic loss still rejects and a failed typed export preserves its in-memory
+replacement accounting for retry. Successful output omits transient accounting.
 `REQ-CORE-006-AC03`
 
 4 - The current AST namespace invalidates both predecessor producer families at
@@ -929,12 +939,21 @@ unchanged package/source identity; semantic-cache ownership, platform-sensitive
 path identity and guarded publication remain intact. Real persistence failures
 preserve prior accepted products, report the owning safe boundary and permit a
 successful retry without changing supported platform coverage or deadlines.
+Manifest-derived updates may skip unchanged producers under the accepted
+analysis profile. An extractor, projection, Qt, discovery or resolution policy
+change requiring a full pass takes precedence over matching file content.
+Direct and atomic ignore-policy edits reconcile live sources under that policy.
 `REQ-CORE-006-AC04`
 
 Status: **Implemented in INC-QML-133; focused local profiles pass. Full and hosted
 verification remain pending.**
 Exact tests, profiles, failures and remaining system gaps belong to traceability.
 This requirement does not assert complete Qt SDK coverage or execute corpus code.
+
+INC-QML-134 implements the additional 0.9.108 composition boundaries above.
+The combined raw AST namespace is 46, with fork 41 and upstream 45 retired.
+Exact-revision package, hosted and resulting-branch verification have separate
+evidence and status in the delivery record.
 
 ## Current-upstream integration profile
 
