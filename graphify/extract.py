@@ -4203,7 +4203,7 @@ _CSHARP_MEMBER_DECL_RE = re.compile(
 )
 
 
-def _csharp_branch_member_sigs(text: bytearray, start: int, end: int) -> set[tuple[bytes, int]]:
+def _csharp_branch_member_sigs(text: bytearray, start: int, end: int, root) -> set[tuple[bytes, int]]:
     """(name, arity) of the members a branch declares at its own brace depth.
 
     A heuristic, not a parse: a declaration is an identifier preceded by a
@@ -4237,6 +4237,15 @@ def _csharp_branch_member_sigs(text: bytearray, start: int, end: int) -> set[tup
     for m in _CSHARP_MEMBER_DECL_RE.finditer(code):
         if depth_at[m.start(2)] != 0 or m.group(1) in _CSHARP_NOT_A_TYPE:
             continue
+        # Complete lexical locals keep their distinct source occurrences and
+        # are excluded from the legacy class-member masking heuristic.
+        if root is not None:
+            name_node = root.descendant_for_byte_range(start + m.start(2), start + m.end(2))
+            declaration = name_node.parent if name_node is not None else None
+            if (declaration is not None and declaration.type == "local_function_statement"
+                    and not declaration.has_error and declaration.child_by_field_name("name") == name_node
+                    and declaration.child_by_field_name("body") is not None):
+                continue
         name = m.group(2)
         if m.group(3) != b"(":
             sigs.add((name, -1))
@@ -4262,8 +4271,8 @@ def _csharp_branch_member_sigs(text: bytearray, start: int, end: int) -> set[tup
     return sigs
 
 
-def _blank_csharp_preprocessor(source: bytes) -> bytes | None:
-    """Blank C# preprocessor directives and the ``#if`` branches that derail parsing, or None.
+def _blank_csharp_preprocessor(source: bytes, root) -> tuple[bytes | None, tuple[tuple[int, int], ...]]:
+    """Mask breaking C# directives/branches and retain their original conditional ranges.
 
     tree-sitter-c-sharp parses the raw text, directives and all branches
     together. Its error recovery around a directive can close the enclosing
@@ -4293,7 +4302,8 @@ def _blank_csharp_preprocessor(source: bytes) -> bytes | None:
 
     A ``#`` line inside a comment or a multi-line string is not a directive;
     comments and string literals are skipped while looking for line starts.
-    Returns None when the file has no directive.
+    A syntactically complete local function retains its actual source role
+    instead of entering the legacy same-named class-member gate.
     """
     n = len(source)
     # (line_start, line_end, keyword) for every directive line.
@@ -4332,7 +4342,7 @@ def _blank_csharp_preprocessor(source: bytes) -> bytes | None:
                 j += 1
         i = j + 1
     if not directives:
-        return None
+        return None, ()
 
     out = bytearray(source)
 
@@ -4345,12 +4355,13 @@ def _blank_csharp_preprocessor(source: bytes) -> bytes | None:
         start, end = bodies[branch]
         if not _csharp_branch_balanced(out, start, end):
             return False
-        sigs = _csharp_branch_member_sigs(out, start, end)
-        return not any(sigs & _csharp_branch_member_sigs(out, *bodies[k]) for k in kept)
+        sigs = _csharp_branch_member_sigs(out, start, end, root)
+        return not any(sigs & _csharp_branch_member_sigs(out, *bodies[k], root) for k in kept)
 
     # Each open #if group: the (directive start, directive end) of its #if and
     # of every #elif/#else seen so far.
     stack: list[list[tuple[int, int]]] = []
+    conditional_ranges = []
 
     def close(heads: list[tuple[int, int]], endif_start: int) -> None:
         bodies = [(heads[k][1], heads[k + 1][0] if k + 1 < len(heads) else endif_start)
@@ -4369,25 +4380,29 @@ def _blank_csharp_preprocessor(source: bytes) -> bytes | None:
         elif word in (b"elif", b"else") and stack:
             stack[-1].append((start, end))
         elif word == b"endif" and stack:
-            close(stack.pop(), start)
+            group = stack.pop()
+            close(group, start)
+            if not stack:
+                conditional_ranges.append((group[0][1], start))
     # An unterminated #if runs to the end of the file.
     while stack:
-        close(stack.pop(), n)
-    return bytes(out)
+        group = stack.pop()
+        close(group, n)
+        if not stack:
+            conditional_ranges.append((group[0][1], n))
+    return bytes(out), tuple(conditional_ranges)
 
 
 def extract_csharp(path: Path) -> dict:
     """Extract C# type declarations, methods, namespaces, and usings from a .cs file."""
-    source_override = None
     try:
         source = path.read_bytes()
     except OSError:
-        source = None
-    if source is not None:
-        source_override = _blank_csharp_preprocessor(source)
-        source_override = _normalize_csharp_verbatim_interpolation(
-            source_override or source
-        ) or source_override
+        return _extract_generic(path, _CSHARP_CONFIG)
+    source_override = _normalize_csharp_verbatim_interpolation(source) or source
+    if re.search(rb"(?m)^[ \t\v\f]*#", source_override):
+        return _extract_generic(path, _CSHARP_CONFIG, source_override=source_override,
+                                csharp_preprocessor=_blank_csharp_preprocessor)
     return _extract_generic(path, _CSHARP_CONFIG, source_override=source_override)
 
 

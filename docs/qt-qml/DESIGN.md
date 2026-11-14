@@ -3685,6 +3685,8 @@ extraction, discovery and publication settings. The scan digest can change
 during ordinary file additions/deletions, and relative manifests can travel
 with a copied checkout. An unreadable baseline, stale Qt state or projection,
 changed resolution inputs, or excluded live sources requires the full path.
+The graph's recorded size and modification stamp must still match before
+an unchanged derived batch can skip the candidate validation path.
 Watcher policy events may name an atomic replacement destination. On Linux the
 observer also updates its pruned directory schedule before reconciling the
 accepted corpus. Nonblocking derived requests use their own pending marker.
@@ -3710,6 +3712,9 @@ header classification reads at most the same cap. A joined member's original
 body bytes remain independently verifiable against its implementation file.
 C# indexer accessors contribute calls under the canonical indexer. Explicit
 constructors are separate owners with their enclosing type scope.
+The C# preprocessor recovery preserves original conditional byte ranges and
+complete lexical-local occurrences. Directive masking can recover structure
+without making conditional fields, indexers or call targets unconditional.
 
 Legacy size exceptions retain their existing owners. These measured files
 combine significant incoming upstream changes with existing fork behavior.

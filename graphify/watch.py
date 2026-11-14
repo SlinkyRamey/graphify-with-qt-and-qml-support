@@ -2110,7 +2110,7 @@ def _projection_refresh_required(out: Path, state: dict) -> bool:
 
 
 def _manifest_profile_matches(out: Path, state: dict) -> bool:
-    """Allow a manifest diff only under the policy that produced its graph.
+    """Allow a manifest diff only against the graph recorded by its producer.
 
     Copied checkouts can carry relative manifest rows. A different discovered
     file set is expected on edits, adds and deletes; the other state fields
@@ -2118,9 +2118,13 @@ def _manifest_profile_matches(out: Path, state: dict) -> bool:
     """
     try:
         previous = json.loads((out / _BUILD_STATE_NAME).read_text(encoding="utf-8"))
+        graph = (out / "graph.json").stat()
     except (OSError, ValueError):
         return False
-    return isinstance(previous, dict) and all(
+    if (not isinstance(previous, dict) or previous.get("graph_size") != graph.st_size
+            or previous.get("graph_mtime_ns") != graph.st_mtime_ns):
+        return False
+    return all(
         previous.get(key) == value for key, value in state.items()
         if key not in {"scan_digest", "scan_root"}
     )
@@ -2848,7 +2852,6 @@ def _rebuild_code(
         if (
             incremental and changed_paths is None and not force
             and not qt_full_refresh and not projection_refresh
-            and (out / "graph.json").is_file()
             and _manifest_profile_matches(out, _build_state_now)
         ):
             changed_paths = _manifest_change_set(detected, out, watch_root)

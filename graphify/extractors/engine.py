@@ -5,7 +5,7 @@ import hashlib
 import importlib
 import json
 import re
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 from graphify.extractors.base import (
     _LANGUAGE_BUILTIN_GLOBALS,
     _file_stem,
@@ -7141,7 +7141,7 @@ def _php_get_route_name(closure_node, src: bytes) -> str | None:
 def _extract_generic(
     path: Path, config: LanguageConfig, *, source_override: bytes | None = None,
     scan_root: Path | None = None, cpp_original_source: bytes | None = None,
-    preserve_call_sites: bool = False,
+    preserve_call_sites: bool = False, csharp_preprocessor=None,
 ) -> dict:
     """Generic AST extractor driven by LanguageConfig.
 
@@ -7193,6 +7193,12 @@ def _extract_generic(
         if source and not source.endswith(b"\n"):
             source = source + b"\n"
         tree = parser.parse(source)
+        csharp_condition_ranges = ()
+        if csharp_preprocessor is not None:
+            masked, csharp_condition_ranges = csharp_preprocessor(source, tree.root_node)
+            if masked is not None:
+                source = masked
+                tree = parser.parse(source)
         root = tree.root_node
     except Exception as e:
         return {"nodes": [], "edges": [], "error": str(e)}
@@ -7357,12 +7363,19 @@ def _extract_generic(
     csharp_member_groups: dict[str, set[str]] = {}
     csharp_member_reservations = {}
     csharp_lexical = None
+    condition_starts = tuple(start for start, _ in csharp_condition_ranges)
+
+    def csharp_is_conditional(node) -> bool:
+        """Read original directive coverage even after parser repair blanks it."""
+        index = bisect_right(condition_starts, node.start_byte) - 1
+        return index >= 0 and node.start_byte < csharp_condition_ranges[index][1]
     csharp_member_ids: set[str] = set()
     # plain constructor nid -> {signature: node}, like csharp_overloads.
     csharp_ctor_overloads: dict[str, dict[str, dict]] = {}
     if config.ts_module == "tree_sitter_c_sharp":
         from graphify.extractors.csharp_lexical_calls import CSharpLexicalCalls
-        csharp_lexical = CSharpLexicalCalls(root, source, stem, signature=_csharp_method_signature)
+        csharp_lexical = CSharpLexicalCalls(root, source, stem, signature=_csharp_method_signature,
+                                           conditional_at=csharp_is_conditional)
         csharp_interface_names = _csharp_pre_scan_interfaces(root, source)
         csharp_type_groups, csharp_member_groups, csharp_member_ids = _csharp_pre_scan_name_collisions(
             root, source, stem, member_reservations=csharp_member_reservations,
@@ -8726,6 +8739,7 @@ def _extract_generic(
                 field_nid, occurrence = csharp_field_occurrences.identify(field_nid, parent_class_nid, name, syntax)
                 line = syntax.start_point.row + 1
                 metadata["duplicate_declaration"] = occurrence > 0
+                metadata["conditional"] |= csharp_is_conditional(syntax)
                 add_node(field_nid, name, line, metadata={"csharp_member": metadata})
                 add_edge(parent_class_nid, field_nid, "defines", line, context="field")
             type_node = node.child_by_field_name("type")
@@ -8804,6 +8818,7 @@ def _extract_generic(
                 member, occurrence = csharp_indexer_occurrences.identify(parent_class_nid, descriptor, node)
                 line = node.start_point.row + 1
                 metadata = {**descriptor.metadata, "duplicate_declaration": occurrence > 0}
+                metadata["conditional"] |= csharp_is_conditional(node)
                 signature, method_meta = _csharp_method_signature(node, source)
                 explicit = next((child for child in node.children
                                  if child.type == "explicit_interface_specifier"), None)

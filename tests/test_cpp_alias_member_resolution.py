@@ -1,10 +1,13 @@
 """Alias receiver calls use lexical declarations and explicit include reachability."""
 import importlib.util
+import base64
 import json
+from pathlib import Path
 
 import pytest
 
 from graphify.extract import extract, extract_cpp
+from tests.qt_source_newline_oracle import validated_projection
 
 pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("tree_sitter_cpp") is None,
@@ -34,6 +37,27 @@ def _calls(result, caller="Run()"):
     return {(owners.get(e["target"]), nodes[e["target"]]["label"], e["confidence"])
             for e in result["edges"] if e["relation"] == "calls"
             and nodes[e["source"]]["label"] == caller}
+
+
+def _witnessed_newline_projection(result, root):
+    """Check exact input witnesses before expressing only coordinates in LF bytes."""
+    projected, count = validated_projection(result, root)
+    assert count > 0
+    for original, copied in zip(result["nodes"], projected["nodes"], strict=True):
+        authority = original.get("metadata", {}).get("cpp_constructor_types")
+        if authority is None:
+            continue
+        source = (root / Path(original["source_file"])).read_bytes()
+        target = copied["metadata"]["cpp_constructor_types"]
+        assert authority["source_size"] == len(source) and authority["shadows"] == []
+        target["source_size"] = len(source.replace(b"\r\n", b"\n"))
+        for include, normalized in zip(authority["includes"], target["includes"], strict=True):
+            span = include["span"]
+            assert include["end_byte"] == span["end_byte"]
+            literal = base64.b64decode(include["literal_b64"], validate=True)
+            assert source[span["start_byte"]:span["end_byte"]].strip() == b'#include "' + literal + b'"'
+            normalized["end_byte"] = normalized["span"]["end_byte"]
+    return projected, count
 
 
 @pytest.mark.parametrize("declaration,type_name,expression", [
@@ -92,23 +116,26 @@ void Hidden() { using Alias = Missing; Alias x; x.Work(); }
     paths = [tmp_path / name for name in files]
     for path in paths:
         path.write_bytes(files[path.name].encode("utf-8"))
-    raw = [extract_cpp(path) for path in paths]
+    raw = [_witnessed_newline_projection(extract_cpp(path), tmp_path) for path in paths]
     cache_root = tmp_path / "cache"
     expected = extract(paths, root=tmp_path, cache_root=cache_root, parallel=False)
     assert _calls(expected) == {("Worker", ".Work()", "INFERRED")}
     assert _calls(expected, "Local()") == {("Worker", ".Work()", "INFERRED"),
                                           ("Other", ".Work()", "INFERRED")}
     assert _calls(expected, "Before()") == _calls(expected, "Hidden()") == set()
+    expected_graph, expected_count = _witnessed_newline_projection(expected, tmp_path)
 
     for path in paths:
         source = files[path.name].replace("\n", "\r\n", 2 if mixed else -1).encode("utf-8")
         path.write_bytes(source)
-    assert [extract_cpp(path) for path in paths] == raw
+    assert [_witnessed_newline_projection(extract_cpp(path), tmp_path) for path in paths] == raw
     for _ in range(2):  # Re-extraction, then the warm AST-cache path.
         actual = extract(paths, root=tmp_path, cache_root=cache_root, parallel=False)
+        actual_graph, actual_count = _witnessed_newline_projection(actual, tmp_path)
+        assert actual_count == expected_count
         for key in ("nodes", "edges"):
-            assert sorted(json.dumps(item, sort_keys=True) for item in actual[key]) == sorted(
-                json.dumps(item, sort_keys=True) for item in expected[key])
+            assert sorted(json.dumps(item, sort_keys=True) for item in actual_graph[key]) == sorted(
+                json.dumps(item, sort_keys=True) for item in expected_graph[key])
     for path in paths:
         assert path.read_bytes() == files[path.name].replace(
             "\n", "\r\n", 2 if mixed else -1).encode("utf-8")

@@ -917,6 +917,8 @@ C and C++ header classification uses one bounded prefix read per dispatch and
 retains lexical dialect recognition.
 An admitted C# constructor or source-owned indexer attributes supported body
 calls to the exact owner, preserving overload and explicit-interface boundaries.
+Supported C# conditional declarations retain their original occurrence and
+uncertainty when parser recovery masks directives.
 `REQ-CORE-006-AC01`
 
 2 - Graph endpoint aliases obey the source language and the authoritative caller
@@ -940,7 +942,9 @@ path identity and guarded publication remain intact. Real persistence failures
 preserve prior accepted products, report the owning safe boundary and permit a
 successful retry without changing supported platform coverage or deadlines.
 Manifest-derived updates may skip unchanged producers under the accepted
-analysis profile. An extractor, projection, Qt, discovery or resolution policy
+analysis profile and recorded graph identity. A replaced or externally edited
+graph requires validation even if the manifest matches. An extractor,
+projection, Qt, discovery or resolution policy
 change requiring a full pass takes precedence over matching file content.
 Direct and atomic ignore-policy edits reconcile live sources under that policy.
 `REQ-CORE-006-AC04`

@@ -160,11 +160,9 @@ class CppMapping:
                               and (not constructor or syntax_matches(node, declaration, self.unit.source, constructor_owner, definition_site=True))]
         if not class_id and definition_matches:
             matches = definition_matches
-        if not class_id and "::" in name and not definition_matches:
-            owners = {owner for candidate in matches for owner in self.parents.get(candidate, ())}
-            wanted = name.split("::")[-2]
-            owners = {node["id"] for node in self.nodes if node["id"] in owners and _label(node) == wanted and node.get("_callable_class")}
-            class_id = next(iter(owners)) if len(owners) == 1 else ""
+        # A generic parent can describe an ordinary C++ member even without a
+        # Qt overlay for its class. Keep the exact callable as source evidence;
+        # bind_classes owns admission of a complete native class body.
         qualified = _qualified(self.unit, declaration, name)
         record = self._record(declaration, short, qualified, matches)
         # A producer-proven free definition retains its callable/body for SDK

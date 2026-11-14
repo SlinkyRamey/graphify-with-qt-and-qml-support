@@ -6189,3 +6189,25 @@ WSL shim. The shell never reached the hook guard. The test now uses the
 existing configured PATH selector to execute the qualified Git Bash binary.
 Native pre-PATH collision reproduction fails before this change and passes
 with the real Bash/Git assertions after it.
+
+The manual manifest shortcut must validate the recorded graph identity before
+treating an unchanged batch as complete. The hosted
+`test_qt_update_direction_integrity.py` cases pin or externally edit the
+existing graph and inject malformed candidate relationship records. A stale
+stamp now goes through the full candidate validation and preserves the prior
+bytes on rejection. Ordinary unchanged manifests retain their fast path.
+
+The source-mapping and installed guidance regressions exercise existing
+requirements. Under REQ-QML-008-AC02, generic member containment cannot
+create a Qt class endpoint without an accepted native class body. The
+97-case source/reference and QML bridge selection passes after the fix.
+The compact disk prompt adds the same source-backed AST and exact scoped-ID
+guidance as other prompts. All 24 guidance cases and five authoritative
+generator checks pass, and the installed Claude core is 798 lines.
+
+The C# recovery correction retains original conditional ranges and complete
+local-function alternatives. Exact hosted field, indexer, and lexical-call
+failures were reproduced and corrected. The C++ alias newline oracle verifies
+physical byte witnesses before comparing whole normalized lookup facts and
+resolved calls through direct, cold and warm extraction. The combined focused
+replay passed 25 exercised cases, including adjacent preprocessor controls.
