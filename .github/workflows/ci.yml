@@ -268,6 +268,7 @@ jobs:
                   'test_req_qml018_ac06_malformed_admitted_metadata_retains_cohort_and_recovers[watch]',
               },
               'tests.test_upstream_qt_export_integration': {
+                  'test_req_qml014_ac04_typed_semantic_replacement_retains_retry_authority',
                   'test_req_qml_010_ac02_original_parallel_links_retain_qml_direction',
                   'test_req_qml_018_ac04_real_recluster_keeps_parallel_and_qml_links',
                   'test_req_qml_018_ac06_preserved_invalid_link_refuses_replacement[collapsed-False]',

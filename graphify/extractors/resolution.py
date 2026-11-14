@@ -3868,6 +3868,9 @@ def _merge_cpp_member_declarations(
     from graphify.extractors.cpp_member_identity import member_fact
 
     includes = _cpp_exact_includes(resolution_nodes, [*edges, *context_edges], root)
+    # Earlier typed allocation vetoes ambiguous carrier rewrites. Later
+    # disambiguation changes IDs, not the missing source authority.
+    refused = {id(node) for node in nodes if node.pop("_cpp_member_remap_refused", False)}
     owners: dict[str, list[dict]] = {}
     members: dict[str, list[dict]] = {}
     literal_names: dict[tuple[str, str], set[str]] = {}
@@ -3904,6 +3907,7 @@ def _merge_cpp_member_declarations(
             continue
         declaration, definition = declarations[0], definitions[0]
         if (id(declaration) not in fresh_objects or id(definition) not in fresh_objects
+                or id(definition) in refused
                 or (owner["id"], declaration["id"]) not in owned
                 or declaration["_cpp_member_records"][0]["signature"] != definition["_cpp_member_records"][0]["signature"]):
             continue
@@ -4040,7 +4044,7 @@ def _merge_decl_def_classes(
     from graphify.extractors.cpp_constructors import bind_cpp_constructors, constructor_merge_allowed
     from graphify.extractors.cpp_class_proof import class_body_keeper, class_merge_allowed
     from graphify.extractors.cpp_member_identity import canonicalize_cpp_members, member_merge_allowed
-    canonicalize_cpp_members(all_nodes, all_edges, all_raw_calls)
+    canonicalize_cpp_members(all_nodes, all_edges, all_raw_calls, retain_refusals=True)
     bind_cpp_constructors(all_nodes, all_edges)
     # Group every code node by id, recording the distinct source files involved.
     by_id: dict[str, list[dict]] = {}

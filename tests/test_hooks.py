@@ -2242,7 +2242,9 @@ def test_worktree_guard_survives_exported_cdpath(tmp_path):
         {_TOPLEVEL_ANCHOR}
         printf 'TOP=%s\\n' "$_GFY_TOP"
     """)
-    result = subprocess.run(["bash", "-c", script], cwd=repo, capture_output=True, text=True)
+    # Windows native executable search can pick the WSL launcher ahead of PATH.
+    result = subprocess.run([select_shell_executable("bash"), "-c", script],
+                            cwd=repo, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert "TOP=" in result.stdout, f"anchor exited before printing: {result.stdout!r} {result.stderr!r}"
     top = result.stdout.strip().split("TOP=", 1)[1]

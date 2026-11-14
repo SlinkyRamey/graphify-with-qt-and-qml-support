@@ -220,10 +220,16 @@ def proven_member_pairs(nodes, edges):
                  if None not in counts[id(target)] and len(counts[id(target)]) == 1)
 
 
-def canonicalize_cpp_members(nodes, edges, raw_calls=()):
+def canonicalize_cpp_members(nodes, edges, raw_calls=(), *, retain_refusals=False):
     """Join after producer call reconciliation, using actual occurrence identities."""
     from graphify.extractors.cpp_member_remap import plan_member_remap
-    pairs, changes = plan_member_remap(proven_member_pairs(nodes, edges), edges, raw_calls)
+    candidates = proven_member_pairs(nodes, edges)
+    pairs, changes = plan_member_remap(candidates, edges, raw_calls)
+    if retain_refusals:
+        accepted = {id(node) for node, _, _ in pairs}
+        for node, _, _ in candidates:
+            if id(node) not in accepted:
+                node["_cpp_member_remap_refused"] = True
     dropped = set()
     for node, target, owner in pairs:
         name = _decoded(class_fact(owner)["qualified_name_b64"])

@@ -6173,3 +6173,19 @@ cohort with the original C++ suffix. Both assert the retained type/call evidence
 Whole-tree Pyright continues to report inherited findings, including the CLI
 dispatcher and generic extractor analysis limits present in both baselines.
 Those findings are separate from executed test and package results.
+
+At PR source `412a897e`, the focused integration identified a late fallback
+that could reverse a typed C++ merge refusal after ID disambiguation.
+`test_cpp_class_case_remap.py::test_req_qml022_ac06_facade_does_not_undo_unproved_multiowner_join`
+now passes with the original assertions. The 62-case correction selection
+includes positive typed joins, namespace splits, exact spans and uncertainty.
+The source-gate inventory also records the added atomic retry case.
+Actual collection and the required-outcome rejection tests pass with the full
+explicit inventory. No workflow lane or assertion is disabled.
+
+For REQ-CORE-004-AC02, hosted Windows compatibility at `412a897e` executed
+`test_hooks.py::test_worktree_guard_survives_exported_cdpath` with the native
+WSL shim. The shell never reached the hook guard. The test now uses the
+existing configured PATH selector to execute the qualified Git Bash binary.
+Native pre-PATH collision reproduction fails before this change and passes
+with the real Bash/Git assertions after it.
