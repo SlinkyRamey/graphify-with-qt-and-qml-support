@@ -1029,3 +1029,15 @@ graph state and allow repaired retry/repeat at the unchanged owning writer.
 Earlier legacy accounting behavior is not generalized into a new transaction.
 Projection4 drives corrected publication with valid raw-cache reuse; no parser
 epoch, diagnostic framework, dependency or platform contract changes.
+
+### Qt 6.12 source attributes and component scope — INC-QML-135
+
+Quoted `Q_MOC_INCLUDE` sites preserve an original span. Conditional sites carry
+`moc_include_conditional` without selecting a header. Unsupported arguments or
+an earlier local override use `QT_CPP_SYNTAX` on the annotation. The existing
+update guard preserves the previous graph on rejection and accepts a repaired
+source on the next update. No header discovery or compilation is invoked.
+
+The `Q_PROPERTY` bindable accessor and QML bound-context paths keep their
+existing source/result diagnostics for unproved targets. Only accepted source
+evidence authorizes an additional edge. No new write boundary is introduced.

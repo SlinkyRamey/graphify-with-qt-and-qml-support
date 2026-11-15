@@ -12,7 +12,7 @@ from graphify.extractors.qt_cpp_syntax import MAX_CPP_BYTES, QtCppError, lexical
 from graphify.extractors.qt_cpp_type_aliases import add_type_dependency_facts, type_dependency_source
 from graphify.extractors.qt_cpp_type_scope import NativeTypeScope
 from graphify.extractors.qt_cpp_api_types import add_api_fields, return_fields
-from graphify.extractors.qt_cpp_metaobject import add_metaobject_declarations
+from graphify.extractors.qt_cpp_metaobject import add_metaobject_declarations, add_moc_includes
 from graphify.extractors.qt_cpp_test_macros import add_qt_test_facts, is_qt_test_source
 from graphify.extractors.qt_cpp_annotations import add_namespace_annotations
 from graphify.extractors.qt_cpp_syntax import walk
@@ -60,6 +60,7 @@ def _class_facts(mapping, facts, *, classes=(), alias_nodes=None):
                  and not node.get("_callable_class")}
     types = NativeTypeScope(mapping.unit, mapping, classes=classes, alias_nodes=alias_nodes)
     add_namespace_annotations(mapping, facts, walk=walk)
+    add_moc_includes(mapping, facts)
     add_qt_test_facts(mapping, facts)
 
     def source_owner(record):

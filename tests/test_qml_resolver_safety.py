@@ -11,6 +11,8 @@ def test_native_join_failure_is_guarded_and_successful_retry_is_clean(tmp_path, 
     import graphify.qml_resolution as resolver
     path = tmp_path / "Main.qml"
     path.write_text("Item { property int value: 3 }", encoding="utf-8")
+    healthy = tmp_path / "ordinary.py"
+    healthy.write_text("def fresh(): return 2\n", encoding="utf-8")
     real = resolver.resolve_qml_project
 
     def broken(*args, **kwargs):
@@ -18,14 +20,17 @@ def test_native_join_failure_is_guarded_and_successful_retry_is_clean(tmp_path, 
         raise RuntimeError("private backend failure details")
 
     monkeypatch.setattr(resolver, "resolve_qml_project", broken)
-    failed = extract([path], root=tmp_path, cache_root=tmp_path, parallel=False)
+    failed = extract([path, healthy], root=tmp_path, cache_root=tmp_path, parallel=False)
+    assert failed["failed_sources"] == [str(path)]
+    assert failed["extracted_sources"] == [str(healthy)]
     assert failed["qml_failures"][0]["code"] == "QML_RESOLUTION_FAILED"
     assert not any(n["id"] == "partial_join_must_not_escape" for n in failed["nodes"])
     assert "private backend" not in str(failed)
     with pytest.raises(QmlSafetyError, match="QML_GRAPH_PRESERVED"):
         require_complete_qml(failed, [path], root=tmp_path, operation="test")
     monkeypatch.setattr(resolver, "resolve_qml_project", real)
-    retried = extract([path], root=tmp_path, cache_root=tmp_path, parallel=False)
+    retried = extract([path, healthy], root=tmp_path, cache_root=tmp_path, parallel=False)
+    assert retried["extracted_sources"] == [str(path), str(healthy)]
     assert not retried["qml_failures"] and not retried["failed_sources"]
     require_complete_qml(retried, [path], root=tmp_path, operation="retry")
 

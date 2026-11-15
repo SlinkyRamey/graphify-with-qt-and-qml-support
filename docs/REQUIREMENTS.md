@@ -223,6 +223,8 @@ Component-local `id` scope, inline components, singleton declarations, inherited
 
 4 - Imported type names, object instances and members have separate identities and lookup roles; a same-label type or member from an unrelated scope cannot satisfy a reference. (`REQ-QML-005-AC04`)
 
+5 - An explicitly bound document gives a source-owned nested component access to uniquely visible outer IDs, including when a nested property has the same name. Local IDs and JavaScript lexical bindings retain their declared scope. Missing, conflicting or unsupported pragma/context evidence cannot create an outer-ID link; property alias targets retain their own type-scope restriction. (`REQ-QML-005-AC05`)
+
 <a name="qml-006--bindings-and-property-aliases"></a>
 
 ### REQ-QML-006 — Bindings and property aliases
@@ -280,6 +282,12 @@ signatures, types or bodies cannot lend native authority. (`REQ-QML-008-AC02`)
 3 - Duplicate registrations, unsupported macro wrappers and ambiguous overloads retain reasons rather than arbitrary bridges; `Q_OBJECT`, inheritance or matching labels alone create no exposure link. (`REQ-QML-008-AC03`)
 
 4 - Qt macro text inside comments/strings has no semantic effect, source offsets remain correct after parser recovery, and existing C++ normalization/test-macro/cross-language guard regressions pass. (`REQ-QML-008-AC04`)
+
+5 - `Q_PROPERTY` with `READ default` or `WRITE default` retains the generated role and its `BINDABLE` spelling. A unique source-proven zero-argument `QBindable<T>` member of the same class supplies a distinct bindable reference when the class has one accepted meta-object marker. Missing, conditional, unsupported or ambiguous evidence creates no guessed link. Generated accessors supply no fabricated callable or notification edge. (`REQ-QML-008-AC05`)
+
+6 - A literal quoted `Q_MOC_INCLUDE` survives native parsing with its original occurrence span and accepted source owner. Conditional occurrences retain uncertainty. The annotation never becomes an ordinary `#include` or an inferred header/type target. Unsupported arguments and locally overridden uses reject the Qt snapshot with a source diagnostic; the last valid graph survives and a valid edit can recover. (`REQ-QML-008-AC06`)
+
+7 - One literal, unconditional Qt list-property assignment modifier on an otherwise admitted class preserves the existing registration and records its declared policy and span. Duplicate, conflicting, conditional or malformed modifiers establish no provider authority. Graphify leaves list assignment evaluation to Qt. (`REQ-QML-008-AC07`)
 
 <a name="qml-009--qt-project-and-resource-metadata"></a>
 
@@ -921,6 +929,9 @@ Supported C# conditional declarations retain their original occurrence and
 uncertainty when parser recovery masks directives.
 Supported UTF-16, UTF-32 and Windows-1252 C# inputs use the shared deterministic
 decode before recovery and produce the same modeled graph as UTF-8.
+Separated C++ method spellings keep independent members and actual endpoints.
+Only an exact signature/owner pair with accepted include evidence can fold; a
+colliding field or unresolved identity cannot authorize a fold.
 `REQ-CORE-006-AC01`
 
 2 - Graph endpoint aliases obey the source language and the authoritative caller
@@ -939,6 +950,10 @@ slice-complete checkpoints cannot silently certify omitted accepted input.
 An explicitly replaced source can retire its old semantic nodes. Unrelated
 semantic loss still rejects and a failed typed export preserves its in-memory
 replacement accounting for retry. Successful output omits transient accounting.
+Failed generic source extraction keeps its last accepted AST slice and does
+not claim replacement authority. Native Qt/QML failures also retain their
+structured reasons for rejection. Unread semantic inputs remain pending and
+do not supply guessed facts.
 `REQ-CORE-006-AC03`
 
 4 - The current AST namespace invalidates both predecessor producer families at
@@ -963,6 +978,10 @@ INC-QML-134 implements the additional 0.9.108 composition boundaries above.
 The combined raw AST namespace is 46, with fork 41 and upstream 45 retired.
 Exact-revision package, hosted and resulting-branch verification have separate
 evidence and status in the delivery record.
+
+INC-QML-136 implements the 0.9.109 composition boundaries. AST 47 retires
+both distinct schema-46 producers; Qt policy 34 covers the mechanism changes
+from INC-QML-135. Hosted verification applies to the reviewed integration SHA.
 
 ## Current-upstream integration profile
 

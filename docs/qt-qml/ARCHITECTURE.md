@@ -1674,3 +1674,13 @@ independent semantic prompt-cache lifetime remain unchanged. The incoming PyAV
 compatibility cap is adopted through the frozen Python/uv contract; no Qt SDK or
 second application runtime is introduced. Upstream and fork/default reviews and
 resulting-commit evidence remain separate; maintainer permissions are respected.
+
+### INC-QML-135 — Qt 6.12 attribute and scope evidence
+
+The Qt C++ source view keeps original annotations independent of its recovered
+parse buffer. The property, registration and moc-annotation owners write their
+own semantic facts. A Qt code generation hint grants no native include access.
+The QML declaration producer supplies an original pragma witness to the existing
+scope index. Supported bound scopes are reconstructed from accepted ownership
+inside the same document, keeping runtime instantiation and values opaque.
+Policy 34 refreshes accepted relations behind the existing update guard.

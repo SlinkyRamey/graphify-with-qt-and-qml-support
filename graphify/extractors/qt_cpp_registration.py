@@ -12,6 +12,11 @@ from graphify.extractors.cpp_include_guards import is_include_guard
 _SUPPORTED = {"qmlRegisterType", "qmlRegisterUncreatableType", "qmlRegisterSingletonType",
               "qmlRegisterSingletonInstance", "qmlRegisterAnonymousType"}
 _IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
+_LIST_ASSIGN_BEHAVIOR = {
+    "QML_LIST_PROPERTY_ASSIGN_BEHAVIOR_APPEND": "Append",
+    "QML_LIST_PROPERTY_ASSIGN_BEHAVIOR_REPLACE": "Replace",
+    "QML_LIST_PROPERTY_ASSIGN_BEHAVIOR_REPLACE_IF_NOT_DEFAULT": "ReplaceIfNotDefault",
+}
 
 
 def literal_string(value):
@@ -45,6 +50,29 @@ def class_target(unit, syntax, raw_type, classes, *, type_scope=None):
     return scope.resolve_class(normalize_type(raw_type), syntax.start_byte)
 
 
+def _list_assignment_fields(unit, record, owned):
+    """Record the one class-owned policy without interpreting list expressions."""
+    markers = [macro for macro in owned if macro["name"] in _LIST_ASSIGN_BEHAVIOR]
+    if not markers:
+        return {}
+    # The Qt wrappers expand to this class-info key. A second source spelling
+    # would compete for the same policy, so the wrapper cannot prove a value.
+    explicit_class_info = any(macro["name"] == "Q_CLASSINFO" and macro["args"]
+                              and literal_string(macro["args"][0]) == "QML.ListPropertyAssignBehavior" for macro in owned)
+    if len(markers) != 1 or explicit_class_info:
+        return {"status": "ambiguous", "reason": "qml_list_property_assign_behavior_ambiguous"}
+    marker = markers[0]
+    start, end = marker["start_byte"], marker["end_byte"]
+    if unit.source[start:end] != marker["name"].encode():
+        return {"status": "unsupported", "reason": "qml_list_property_assign_behavior_form_unsupported"}
+    if conditional_offset(unit, start):
+        return {"status": "dynamic", "reason": "conditional_qml_list_property_assign_behavior"}
+    body = record["syntax"].child_by_field_name("body")
+    if body is None or body.named_descendant_for_byte_range(start, end) != body:
+        return {"status": "unsupported", "reason": "qml_list_property_assign_behavior_scope_unsupported"}
+    return {"list_property_assign_behavior": _LIST_ASSIGN_BEHAVIOR[marker["name"]]}
+
+
 def add_macro_registration(mapping, facts, record):
     owned = [macro for macro in record["macros"] if mapping.class_at(macro["start_byte"]) is record]
     macros = {macro["name"]: macro for macro in owned}
@@ -63,7 +91,8 @@ def add_macro_registration(mapping, facts, record):
              "creatable": "QML_UNCREATABLE" not in macros and "QML_ANONYMOUS" not in macros}
     allowed = {"QML_ELEMENT", "QML_NAMED_ELEMENT", "QML_ANONYMOUS", "QML_SINGLETON", "QML_UNCREATABLE",
                "QML_ADDED_IN_VERSION", "QML_REMOVED_IN_VERSION"}
-    unsupported = sorted(name for name in macros if name.startswith("QML_") and name not in allowed)
+    unsupported = sorted(name for name in macros if name.startswith("QML_")
+                         and name not in allowed and name not in _LIST_ASSIGN_BEHAVIOR)
     if unsupported:
         status, reason = "unsupported", "foreign_extended_or_attached_mapping_unsupported"
     if conditional(record["syntax"], guard_index=mapping.unit.include_guards) or conditional_offset(mapping.unit, named["start_byte"]):
@@ -82,6 +111,9 @@ def add_macro_registration(mapping, facts, record):
                 fields[key] = [int(arg) for arg in args]
             else:
                 fields.update(status="unsupported", reason="exposure_version_expression_unsupported")
+    # A source list policy never repairs independently unsupported registration.
+    if fields["status"] == "resolved":
+        fields.update(_list_assignment_fields(mapping.unit, record, owned))
     facts.add("registration", name, named["span"], owner=record["node_id"] or None, **fields)
 
 

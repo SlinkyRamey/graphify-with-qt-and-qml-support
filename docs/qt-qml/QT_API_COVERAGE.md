@@ -282,3 +282,19 @@ failure-retention/recovery and source-observation probes. This is installed
 mechanism evidence, not additional individually verified SDK symbols. Full-source,
 reference-corpus and reviewed-head hosted evidence have their own identities and
 acceptance in traceability; none is inferred from the inventory counts.
+
+## Qt 6.12 source-mechanism review — INC-QML-135
+
+The 14 November 2026 review checks the [release notes](https://doc.qt.io/qt-6/whatsnew612.html),
+[QObject macros](https://doc.qt.io/qt-6.12/qobject.html#macros),
+[property system](https://doc.qt.io/qt-6/properties.html),
+[exposure rules](https://doc.qt.io/qt-6/qtqml-cppintegration-exposecppattributes.html)
+and [QML document structure](https://doc.qt.io/qt-6.12/qtqml-documents-structure.html#componentbehavior).
+
+| Reviewed mechanism | Increment and boundary |
+| --- | --- |
+| `Q_MOC_INCLUDE` | Original quoted source occurrence and containment, with conditional status. Its path describes generated moc input and supplies no ordinary include/type authority. REQ-QML-008-AC06. |
+| `Q_PROPERTY` generated bindable accessors | `READ default` and `WRITE default` have a separate generated role and can reference a proven `QBindable<T>` member. This provides no synthetic C++ method or runtime notification proof. REQ-QML-008-AC05. |
+| C++ list-property modifiers | A valid, unique `QML_LIST_PROPERTY_ASSIGN_BEHAVIOR_*` marker supplies a source policy on an otherwise supported registration. Actual list contents and mutation remain runtime matters. REQ-QML-008-AC07. |
+| `ComponentBehavior: Bound` | Resolve an outer ID in an explicitly bound source-owned nested component using the documented precedence. Implicit runtime creation context remains unresolved. REQ-QML-005-AC05. |
+| Remaining boundaries | External SDK-only symbols and overloads, runtime binding evaluation, preprocessing, unimplemented QML registration modifiers and generated behavior retain the mechanism matrix's coverage limits. |

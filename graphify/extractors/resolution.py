@@ -3873,15 +3873,14 @@ def _merge_cpp_member_declarations(
     refused = {id(node) for node in nodes if node.pop("_cpp_member_remap_refused", False)}
     owners: dict[str, list[dict]] = {}
     members: dict[str, list[dict]] = {}
-    literal_names: dict[tuple[str, str], set[str]] = {}
+    names_by_id: dict[str, set[str]] = {}
     for node in resolution_nodes:
         if node.get("_callable_class") and node.get("_cpp_qualified"):
             owners.setdefault(node["_cpp_qualified"], []).append(node)
         for record in node.get("_cpp_member_records", []):
             qualified = record["qualified"]
             members.setdefault(qualified, []).append(node)
-            scope, _, name = qualified.rpartition("::")
-            literal_names.setdefault((scope, normalize_id(name)), set()).add(name)
+            names_by_id.setdefault(node["id"], set()).add(qualified)
     owned = {(e.get("source"), e.get("target")) for e in [*edges, *context_edges]
              if e.get("relation") == "method"}
     fresh_objects = {id(n) for n in nodes}
@@ -3890,9 +3889,11 @@ def _merge_cpp_member_declarations(
     for qualified, group in members.items():
         if "::" not in qualified or len(group) != 2:
             continue
-        scope, name = qualified.rsplit("::", 1)
-        if len(literal_names[(scope, normalize_id(name))]) != 1:
-            continue  # Equivalence cannot rely on a collapsed literal member name.
+        scope, _ = qualified.rsplit("::", 1)
+        # A separately allocated spelling may share a normalized name. Only a
+        # carrier that actually aliases different source names blocks the fold.
+        if any(names_by_id[node["id"]] != {qualified} for node in group):
+            continue
         classes = owners.get(scope, [])
         if len(classes) != 1 or classes[0].get("_cpp_class_kind") != "definition":
             continue
@@ -3907,6 +3908,7 @@ def _merge_cpp_member_declarations(
             continue
         declaration, definition = declarations[0], definitions[0]
         if (id(declaration) not in fresh_objects or id(definition) not in fresh_objects
+                or declaration["id"] == definition["id"]
                 or id(definition) in refused
                 or (owner["id"], declaration["id"]) not in owned
                 or declaration["_cpp_member_records"][0]["signature"] != definition["_cpp_member_records"][0]["signature"]):

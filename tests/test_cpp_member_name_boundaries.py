@@ -18,6 +18,19 @@ from graphify.paths import load_node_link_graph
 from tests.cpp_member_name_helpers import facade, members, owned, owner_node, project, span
 
 
+def test_req_core006_ac01_mixed_method_and_field_keep_distinct_reserved_candidates(tmp_path):
+    """A literal data collision must not inherit the method-only plain-ID rule."""
+    path = project(tmp_path, b"struct Panel { void read() {} int _read; };\n")
+    result = extract_cpp(path)
+    owner = owner_node(result)["id"]
+    found = {node["label"]: node for node in owned(result)}
+    assert set(found) == {".read()", "_read"}
+    ids = {node["id"] for node in found.values()}
+    assert len(ids) == 2 and _make_id(owner, "read") not in ids
+    assert found[".read()"]["_callable"] is True
+    assert found["_read"].get("_callable") is not True
+
+
 def test_req_qml022_ac06_literal_generated_name_reservations_do_not_choose_a_winner(tmp_path):
     """A real field resembling every initial repaired candidate keeps its plain ID."""
     digest = hashlib.sha256(b"Field").hexdigest()

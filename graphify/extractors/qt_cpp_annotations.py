@@ -124,6 +124,10 @@ def valid_new_annotation(name, args, *, parenthesized):
         return parenthesized and len(args) == 1 and bool(re.fullmatch(r"[A-Za-z_]\w*", args[0]))
     if name == "Q_NAMESPACE" or name in FUNCTION_ANNOTATIONS:
         return not parenthesized
+    # Preserve only an ordinary quoted spelling. Expanding expressions, escapes
+    # or adjacent literals would require a preprocessing contract this view lacks.
+    if name == "Q_MOC_INCLUDE":
+        return parenthesized and len(args) == 1 and bool(re.fullmatch(r'"[^"\\\x00-\x1f\x7f]{1,256}"', args[0]))
     return True
 
 
