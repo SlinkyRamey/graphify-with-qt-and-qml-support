@@ -6235,3 +6235,28 @@ loading the extractor package through Qt/QML metadata readers. The same
 validated literal decoders now live in a parser-independent transport module.
 The 190-case focused selection passes with the original no-import checks and
 extra saved Qt fact coverage, alongside typed transport and rejection tests.
+
+## INC-QML-135 — Qt 6.12 source attribute and scope review
+
+| Criterion | Production and regression coverage |
+| --- | --- |
+| REQ-QML-005-AC05 | `tests/test_qml_bound_component_scope.py::test_req_qml005_ac05_outer_id_precedes_local_property_only_when_bound`, `::test_req_qml005_ac05_bound_capture_excludes_local_ids_js_aliases_and_foreign_ids`, `::test_req_qml005_ac05_editing_directive_replaces_the_incremental_target`, `::test_req_qml005_ac05_ambiguous_outer_id_does_not_fall_back`. Synthetic Qt 6.12.0 independently confirms Bound and Unbound collision targets and rejects a cross-component alias. |
+| REQ-QML-008-AC05 | `tests/test_qt_bindable_defaults.py::test_req_qml008_ac05_bindable_defaults_link_original_declaration`, `::test_req_qml008_ac05_bindable_defaults_fail_closed`, `::test_req_qml008_ac05_bindable_reference_requires_exact_scope`, `::test_req_qml008_ac05_bindable_target_requires_moc_declaration`, `::test_req_qml008_ac05_bindable_update_and_fresh_facade_agree`. The pre-fix facade left the generated roles unresolved where the bindable declaration was accepted. |
+| REQ-QML-008-AC06 | `tests/test_qt_moc_includes.py::test_req_qml008_ac06_moc_includes_are_source_sites_with_original_bytes`, `::test_req_qml008_ac06_present_header_never_supplies_ordinary_include_authority`, `::test_req_qml008_ac06_unsupported_moc_include_has_a_source_diagnostic`, `::test_req_qml008_ac06_warm_reload_matches_fresh_and_removes_stale_markers`. The original project parser rejected the occurrence alongside a valid property. The real updater rejects malformed input and retains the prior graph before recovery and cold parity. |
+| REQ-QML-008-AC07 | `tests/test_qt_list_property_annotations.py::test_req_qml008_ac07_documented_list_policy_preserves_provider`, `::test_req_qml008_ac07_list_policy_has_no_authority_from_invalid_markers`, `::test_req_qml008_ac07_nested_list_policy_does_not_authorize_parent_hint`, `::test_req_qml008_ac07_list_policy_update_removes_stale_annotation`. All three official SDK spellings formerly suppressed the otherwise accepted provider. Coverage proves member resolution, source occurrence, conflict rejection, and a repeated warm update with fresh parity. |
+| REQ-QML-018-AC02 / REQ-QML-011-AC04 | `tests/test_qt_analysis_state.py::test_req_qml018_ac02_literal_parser_upgrade_retires_prior_policy_and_repeats[33]` and `tests/test_qt_cmake_rc_updates.py::test_req_qml011_ac04_prior_policy_refresh_rejection_retains_products_then_commits26[33]`. Policy 34 upgrades the preceding checkpoint and preserves transactional update ownership. |
+
+All rows target the static source profile. Qt SDK execution, code generation,
+runtime bindings and undiscovered Qt APIs retain independent acceptance.
+
+## INC-QML-136 — Upstream 0.9.109 integration
+
+| Criterion | Production and regression coverage |
+| --- | --- |
+| REQ-CORE-006-AC01 / REQ-QML-022-AC02/AC06 | `tests/test_cpp_underscore_ids.py`, `tests/test_cpp_member_declaration_identity.py::test_underscore_twin_keeps_its_own_node_and_does_not_block_the_fold`, `tests/test_cpp_member_name_boundaries.py::test_req_core006_ac01_mixed_method_and_field_keep_distinct_reserved_candidates`, `tests/test_csharp_explicit_interface.py`, `tests/test_csharp_directive_encoding.py`, and `tests/test_variadic_param_refs.py`. A combined-source run reproduced the remaining fold veto; the exact case and its C++/Qt neighbors passed a 110-case replay. |
+| REQ-CORE-006-AC03 / REQ-QML-011-AC04 | `tests/test_failed_ast_replacement.py`, `tests/test_cpp_source_views.py`, `tests/test_qml_resolver_safety.py`, `tests/test_symlinked_root_source_file.py`, `tests/test_skillgen.py`, and `tests/test_skillgen_coverage_root.py`. Local Windows extraction and alias checks passed 47 cases with 12 platform skips. Three linked-root cases ran successfully with real NTFS junctions; hosted symlink coverage is independent. |
+| REQ-CORE-006-AC04 / REQ-QML-018-AC02 | `tests/test_upstream_qt_cache_integration.py::test_req_qml003_ac04_qml018_ac05_old_namespaces_miss_and_refresh[0.9.108-46]` and `[0.9.109-46]`; the complete 25-case Linux gate inventory passed in local Windows JUnit. The frozen lock and all five generated validators passed. |
+
+Local evidence uses the frozen all-extras development profile on Windows.
+The ordinary PR workflow supplies separate platform and installed-wheel
+evidence for the synthetic merge revision.

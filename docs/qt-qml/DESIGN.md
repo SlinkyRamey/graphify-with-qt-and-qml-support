@@ -3730,3 +3730,50 @@ characterization path before further cross-responsibility growth.
 | Extraction / extract.py, engine.py, resolution.py, cross_repo_calls.py | 13895, 12605, 5097, 334 | 13950, 12700, 5150, 350 | Source producer migration and per-run resolution ownership |
 | Test owners / test_watch.py, test_install_references.py, test_update_incremental.py | 6235, 656, 427 | 6300, 670, 450 | Existing watcher, install and refresh fixture families |
 | C# source fixture / test_csharp_member_nodes.py | 323 | 335 | Incoming source member and overload ownership fixtures |
+
+### Qt 6.12 source attribute and scope refresh
+
+The native normalization view masks supported `Q_MOC_INCLUDE` annotations at
+unchanged byte offsets. The meta-object overlay owns the literal source fact.
+The accepted class or file owns its containment. Header paths remain opaque to
+analysis even when the same header is present in the corpus. Conditional source
+has a separate status. The generic include graph and native type authority
+still depend on ordinary includes and existing build witnesses.
+
+The property overlay separates generated `READ`/`WRITE` roles from named
+callable accessors. It can reference a source-proven bindable member without
+creating a synthetic method or assuming generated notification wiring.
+
+Registration keeps the literal list-property assignment mode as metadata on
+the existing provider. Neither the marker nor a conflicting set supplies new
+registration authority, runtime list contents or assignment-order edges.
+
+QML declarations retain explicit bound-component context. Scope lookup can
+use that context for outer IDs with Qt's ordering and leaves unrestricted
+runtime instantiation/context resolution out of the static model.
+
+Qt policy 34 regenerates these accepted relationships on same-version updates.
+The scope index and annotation module continue to own their existing stages;
+the existing accepted-product writer owns rejection, retention and recovery.
+
+### Graphify 0.9.109 composition and owners
+
+The C++ member allocator keeps one unadorned candidate for a method-only name
+collision when it has a unique eligible spelling. The existing allocator keeps
+literal digest reservations, constructor authority and mixed field/method
+separation. The later declaration/body fold verifies its carrier still holds
+one exact qualified name, then applies existing signature, owner and include
+checks. A failed extractor reports its rejection while the assembly boundary
+keeps that source out of accepted replacement scope. B3.5 consumes the persisted
+scan root and drops output for dispatched sources with no reading witness. The
+manifest retains their pending status.
+
+| Owner / touched legacy files | Physical lines | Review ceiling | Boundary |
+| --- | ---: | ---: | --- |
+| AST state / `cache.py` | 2175 | 2200 | Cache epochs and scoped semantic chunk cleanup |
+| Extraction / `extract.py`, `engine.py`, `resolution.py` | 13946, 12826, 5127 | 14000, 12900, 5150 | Parser migration, allocated member identity, source-owned reconciliation |
+| Graph/CLI / `build.py`, `cli.py` | 3646, 6282 | 3675, 6350 | Accepted replacements and CLI publication |
+| C# parser / `csharp.py` | 715 | 735 | Source facts and shared C# dispatch helpers |
+| Other parsers / `dart.py`, `go.py` | 651, 1045 | 670, 1070 | Language-local name and type extraction |
+| Semantic backend / `llm.py` | 4111 | 4150 | Fragment validation and queued-chunk lifecycle |
+| Chunking regression / `test_chunking.py` | 1079 | 1100 | Existing provider-independent chunk contracts |

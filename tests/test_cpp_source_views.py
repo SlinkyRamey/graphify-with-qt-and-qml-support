@@ -65,11 +65,14 @@ def test_req_qml022_ac06_source_view_integrity_failure_retains_published_cohort_
     """The actual invalid compatibility seam must fail hard even for an ordinary C++ corpus."""
     path = tmp_path / "api.cpp"
     path.write_text("int work(){return 1;}")
+    healthy = tmp_path / "ordinary.py"
+    healthy.write_text("def old(): return 1\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("GRAPHIFY_NO_TIPS", "1")
     initial = run(tmp_path, monkeypatch, operation)
     before = products(tmp_path)
     path.write_text("int renamed(){return 2;}")
+    healthy.write_text("def fresh(): return 2\n", encoding="utf-8")
     with monkeypatch.context() as scope:
         # Force only the external compatibility-view boundary to return an
         # invalid length; production validation/diagnostics/writers remain real.
@@ -79,14 +82,25 @@ def test_req_qml022_ac06_source_view_integrity_failure_retains_published_cohort_
         assert rejected["qt_failures"][0]["code"] == "CPP_SOURCE_VIEW_MISMATCH"
         assert rejected["diagnostics"][0]["severity"] == "error"
         assert rejected["diagnostics"][0]["owner"] == "cpp_source_views"
+        # Retain the Qt error envelope while withholding replacement
+        # authority from the failed source in a mixed extraction.
+        mixed = extraction.extract([path, healthy], root=tmp_path,
+                                   cache_root=tmp_path / ".probe", parallel=False)
+        assert mixed["qt_failures"] == rejected["qt_failures"]
+        assert mixed["diagnostics"] == rejected["diagnostics"]
+        assert mixed["failed_sources"] == [str(path)]
+        assert mixed["extracted_sources"] == [str(healthy)]
+        assert any(node["label"] == "fresh()" for node in mixed["nodes"])
         if operation == "manual":
             with pytest.raises(SystemExit) as failure:
                 manual_update(tmp_path, monkeypatch)
             assert failure.value.code == 1
         else:
-            assert not _rebuild_code(tmp_path, changed_paths=[path], no_cluster=True)
+            assert not _rebuild_code(tmp_path, changed_paths=[path, healthy], no_cluster=True)
     assert products(tmp_path) == before
     assert normalized(published(tmp_path)) == normalized(initial)
-    recovered = run(tmp_path, monkeypatch, operation, [path])
+    recovered = run(tmp_path, monkeypatch, operation, [path, healthy])
+    labels = {node["label"] for _, node in recovered.nodes(data=True)}
+    assert "fresh()" in labels and "old()" not in labels
     assert any(data["label"] == "renamed()" for _, data in recovered.nodes(data=True))
     assert normalized(recovered) == normalized(clean(tmp_path, tmp_path / ".recovered"))

@@ -20,7 +20,7 @@ from graphify.extractors.qt_cpp_annotations import (
 )
 
 MAX_CPP_BYTES = 5_000_000
-_MACRO = re.compile(rb"\b(?:QML_[A-Z_]+|Q_(?:OBJECT|GADGET(?:_EXPORT)?|NAMESPACE(?:_EXPORT)?|DECL_NON(?:ALLOCATING|BLOCKING)_FUNCTION|PROPERTY|INVOKABLE|SIGNAL|SLOT|SIGNALS|SLOTS|ENUM(?:_NS)?|FLAG(?:_NS)?|REVISION|CLASSINFO|INTERFACES|DECLARE_METATYPE|EMIT)|SIGNAL|SLOT)\b")
+_MACRO = re.compile(rb"\b(?:QML_[A-Z_]+|Q_(?:OBJECT|GADGET(?:_EXPORT)?|NAMESPACE(?:_EXPORT)?|DECL_NON(?:ALLOCATING|BLOCKING)_FUNCTION|PROPERTY|INVOKABLE|SIGNAL|SLOT|SIGNALS|SLOTS|ENUM(?:_NS)?|FLAG(?:_NS)?|REVISION|CLASSINFO|INTERFACES|DECLARE_METATYPE|MOC_INCLUDE|EMIT)|SIGNAL|SLOT)\b")
 _RAW_STRING = re.compile(rb'(?:u8|u|U|L)?R"([^\s()\\]{0,16})\(')
 _NUMBER = re.compile(rb"(?:[0-9]|\.[0-9])(?:[A-Za-z0-9_.]|'[A-Za-z0-9_]|(?<=[eEpP])[+-])*")
 _MEMBER_CAST = re.compile(rb"\bstatic_cast\s*<[\w:\s*&<>]+\(\s*[\w:]+\s*::\s*\*\s*\)\s*\([\w:\s*&<>,]*\)\s*(?:const\s*)?>\s*\(\s*(&\s*[\w:]+\s*::\s*[A-Za-z_]\w*)\s*\)")

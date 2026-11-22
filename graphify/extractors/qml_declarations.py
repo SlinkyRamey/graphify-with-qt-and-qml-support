@@ -16,9 +16,18 @@ class Declarations:
 
     def extract(self, program):
         facts = self.facts
-        file = facts.add("file", facts.path.name, program, empty=not bool(self.source.strip()))
-        singleton = any(child.type == "ui_pragma" and field(child, "name", self.source) == "Singleton"
-                        for child in program.named_children)
+        pragmas = [child for child in program.named_children if child.type == "ui_pragma"]
+        behavior = [child for child in pragmas
+                    if field(child, "name", self.source) == "ComponentBehavior"]
+        # Only one supported directive authorizes lexical capture in this file.
+        # Keep original-byte evidence without changing declaration identities.
+        directive = {}
+        if len(behavior) == 1:
+            value = field(behavior[0], "value", self.source)
+            if value in {"Bound", "Unbound"}:
+                directive = {"component_behavior": value, "component_behavior_span": span(behavior[0])}
+        file = facts.add("file", facts.path.name, program, empty=not bool(self.source.strip()), **directive)
+        singleton = any(field(child, "name", self.source) == "Singleton" for child in pragmas)
         for ordinal, syntax in enumerate(program.named_children):
             if syntax.type == "ui_import":
                 value = field(syntax, "source", self.source)

@@ -131,7 +131,7 @@ def test_REQ_QML_012_AC02_alias_rejection_preserves_disk_and_allows_repair(tmp_p
     assert first == second and path.read_bytes() == repaired
 
 
-@pytest.mark.parametrize("predecessor", [40, 41, 45])
+@pytest.mark.parametrize("predecessor", [40, 41, 45, 46])
 def test_REQ_QML_011_AC03_schema41_retires40_without_rekeying_semantics(
     tmp_path, monkeypatch, predecessor,
 ):
@@ -143,7 +143,7 @@ def test_REQ_QML_011_AC03_schema41_retires40_without_rekeying_semantics(
         old.setattr(cache, "_AST_CACHE_SCHEMA", predecessor)
         cache.save_cached(source, payload, root=tmp_path, kind="ast")
         cache.save_cached(source, payload, root=tmp_path, kind="semantic")
-    assert cache._AST_CACHE_SCHEMA == 46
+    assert cache._AST_CACHE_SCHEMA == 47
     assert cache.load_cached(source, tmp_path, kind="ast") is None
     assert cache.load_cached(source, tmp_path, kind="semantic") == payload
     cache.save_cached(source, payload, root=tmp_path, kind="ast")
